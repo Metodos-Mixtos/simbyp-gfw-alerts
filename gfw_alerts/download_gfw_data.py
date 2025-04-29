@@ -162,7 +162,7 @@ def save_bbox_to_geojson(shapefile_path: str, output_path: str):
 
 
 
-def plot_alerts_with_boundaries(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, output_path: str, bbox_color="black"):
+def plot_alerts_with_boundaries(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, output_path: str, start_date: str, end_date: str, bbox_color="black"):
     # Proyección a Web Mercator
     area_gdf = gpd.read_file(shapefile_path).to_crs(epsg=3857)
     alerts_gdf = alerts_gdf.to_crs(epsg=3857)
@@ -182,7 +182,7 @@ def plot_alerts_with_boundaries(alerts_gdf: gpd.GeoDataFrame, shapefile_path: st
         print(f"⚠️ No se pudo cargar el basemap: {e}")
 
     ax.set_axis_off()
-    ax.set_title("Alertas integradas de deforestación")
+    ax.set_title(f"Alertas integradas de deforestación entre {start_date} y {end_date}")
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_path)

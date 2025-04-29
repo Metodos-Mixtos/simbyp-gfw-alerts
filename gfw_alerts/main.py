@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 import os
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv('dot_env_content.txt')
 
 # === PARÁMETROS ===
 USERNAME = os.getenv("USERNAME")
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     save_bbox_to_geojson(POLYGON_PATH, BBOX_OUTPUT)
 
     print("🗺️ Guardando visualización como imagen...")
-    plot_alerts_with_boundaries(gdf_alertas, POLYGON_PATH, MAP_OUTPUT)
+    plot_alerts_with_boundaries(gdf_alertas, POLYGON_PATH, MAP_OUTPUT, START_DATE, END_DATE)
 
     print("✅ Proceso completo. Archivos guardados:")
     print(f" - CSV: {CSV_OUTPUT}")
