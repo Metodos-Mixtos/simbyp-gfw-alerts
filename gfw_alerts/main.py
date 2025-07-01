@@ -29,6 +29,7 @@ START_DATE = os.getenv("START_DATE")
 END_DATE = os.getenv("END_DATE")
 POLYGON_PATH = os.getenv("POLYGON_PATH")
 CSV_OUTPUT = os.getenv("CSV_OUTPUT")
+ONEDRIVE_PATH = os.getenv("ONEDRIVE_PATH")
 GEOJSON_OUTPUT = os.getenv("GEOJSON_OUTPUT")
 MAP_OUTPUT = os.getenv("MAP_OUTPUT")
 BBOX_OUTPUT = os.getenv("BBOX_OUTPUT")
@@ -49,30 +50,35 @@ if __name__ == "__main__":
     data = download_alerts(api_key, START_DATE, END_DATE, polygon)
 
     print("💾 Guardando CSV...")
-    save_to_csv(data, CSV_OUTPUT)
+    CSV_OUTPUT_PATH = os.path.join(ONEDRIVE_PATH, CSV_OUTPUT)
+    save_to_csv(data, CSV_OUTPUT_PATH)
 
     print("📄 Convirtiendo CSV en GeoDataFrame...")
-    gdf_alertas = csv_to_geodataframe(CSV_OUTPUT)
+    gdf_alertas = csv_to_geodataframe(CSV_OUTPUT_PATH)
     
     print("📊 Resumiendo niveles de alerta...")
     summary = summarize_alert_confidences(gdf_alertas)
     print(json.dumps(summary, indent=2))
 
     print("💾 Guardando resumen como JSON...")
-    with open(SUMMARY_OUTPUT, "w") as f:
+    SUMMARY_OUTPUT_PATH = os.path.join(ONEDRIVE_PATH, SUMMARY_OUTPUT)
+    with open(SUMMARY_OUTPUT_PATH, "w") as f:
         json.dump(summary, f, indent=2)
 
     print("🌍 Guardando GeoDataFrame como GeoJSON...")
-    save_geodataframe_to_geojson(gdf_alertas, GEOJSON_OUTPUT)
+    GEOJSON_OUTPUT_PATH = os.path.join(ONEDRIVE_PATH, GEOJSON_OUTPUT)
+    save_geodataframe_to_geojson(gdf_alertas, GEOJSON_OUTPUT_PATH)
     
     print("📦 Guardando bounding box como GeoJSON...")
-    save_bbox_to_geojson(POLYGON_PATH, BBOX_OUTPUT)
+    BBOX_OUTPUT_PATH = os.path.join(ONEDRIVE_PATH, BBOX_OUTPUT)
+    save_bbox_to_geojson(POLYGON_PATH, BBOX_OUTPUT_PATH)
 
     print("🗺️ Guardando visualización como imagen...")
-    plot_alerts_with_boundaries(gdf_alertas, POLYGON_PATH, MAP_OUTPUT, START_DATE, END_DATE)
+    MAP_OUTPUT_PATH = os.path.join(ONEDRIVE_PATH, MAP_OUTPUT)
+    plot_alerts_with_boundaries(gdf_alertas, POLYGON_PATH, MAP_OUTPUT_PATH, START_DATE, END_DATE)
 
     print("✅ Proceso completo. Archivos guardados:")
-    print(f" - CSV: {CSV_OUTPUT}")
-    print(f" - GeoJSON: {GEOJSON_OUTPUT}")
-    print(f" - Bounding Box: {BBOX_OUTPUT}")
-    print(f" - Mapa PNG: {MAP_OUTPUT}")
+    print(f" - CSV: {CSV_OUTPUT_PATH}")
+    print(f" - GeoJSON: {GEOJSON_OUTPUT_PATH}")
+    print(f" - Bounding Box: {BBOX_OUTPUT_PATH}")
+    print(f" - Mapa PNG: {MAP_OUTPUT_PATH}")
