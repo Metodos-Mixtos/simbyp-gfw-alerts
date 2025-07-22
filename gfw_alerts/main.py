@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 import os
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv('dot_env_content.txt')
 
 # === PARÁMETROS ===
 USERNAME = os.getenv("USERNAME")
@@ -28,13 +28,7 @@ ORG = os.getenv("ORG")
 START_DATE = os.getenv("START_DATE")
 END_DATE = os.getenv("END_DATE")
 POLYGON_PATH = os.getenv("POLYGON_PATH")
-CSV_OUTPUT = os.getenv("CSV_OUTPUT")
 ONEDRIVE_PATH = os.getenv("ONEDRIVE_PATH")
-ONEDRIVE_PATH = os.getenv("ONEDRIVE_PATH")
-GEOJSON_OUTPUT = os.getenv("GEOJSON_OUTPUT")
-MAP_OUTPUT = os.getenv("MAP_OUTPUT")
-BBOX_OUTPUT = os.getenv("BBOX_OUTPUT")
-SUMMARY_OUTPUT = os.getenv("SUMMARY_OUTPUT")
 
 # Crear carpeta de salida con las fechas
 fecha_rango = f"{START_DATE}_to_{END_DATE}"
@@ -72,7 +66,6 @@ if __name__ == "__main__":
     save_to_csv(data, CSV_OUTPUT_PATH)
 
     print("📄 Convirtiendo CSV en GeoDataFrame...")
-    gdf_alertas = csv_to_geodataframe(CSV_OUTPUT_PATH)
     gdf_alertas = csv_to_geodataframe(CSV_OUTPUT_PATH)
     
     print("📊 Resumiendo niveles de alerta...")
