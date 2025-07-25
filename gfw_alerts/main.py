@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 import os
 
 # Load environment variables from .env file
-load_dotenv('dot_env_content.env')
+load_dotenv()
 
 # === PARÁMETROS ===
 USERNAME = os.getenv("USERNAME")
