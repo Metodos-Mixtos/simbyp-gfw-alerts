@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 import os
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv("dot_env_content.txt")
 
 # === PARÁMETROS ===
 USERNAME = os.getenv("USERNAME")
@@ -24,11 +24,11 @@ PASSWORD = os.getenv("PASSWORD")
 ALIAS = os.getenv("ALIAS")
 EMAIL = os.getenv("EMAIL")
 ORG = os.getenv("ORG")
-
-START_DATE = os.getenv("START_DATE")
-END_DATE = os.getenv("END_DATE")
-POLYGON_PATH = os.getenv("POLYGON_PATH")
 ONEDRIVE_PATH = os.getenv("ONEDRIVE_PATH")
+
+START_DATE = "2025-01-01"
+END_DATE = "2025-03-31"
+POLYGON_PATH = os.path.join(ONEDRIVE_PATH, "datos/area_estudio/area_estudio_dissolved.geojson")
 
 # Crear carpeta de salida con las fechas
 fecha_rango = f"{START_DATE}_to_{END_DATE}"

@@ -173,10 +173,10 @@ def plot_alerts_with_boundaries(alerts_gdf: gpd.GeoDataFrame, shapefile_path: st
     bbox_geom = box(bbox[0], bbox[1], bbox[2], bbox[3])
     bbox_poly = gpd.GeoDataFrame(geometry=[bbox_geom], crs="EPSG:3857")
 
-    fig, ax = plt.subplots(figsize=(10, 10))
-    area_gdf.boundary.plot(ax=ax, edgecolor="blue", linewidth=1, label="Área")
-    bbox_poly.boundary.plot(ax=ax, edgecolor=bbox_color, linestyle="--", linewidth=1, label="Bounding Box")
-    alerts_gdf.plot(ax=ax, color="red", markersize=5, alpha=0.6, label="Alertas")
+    fig, ax = plt.subplots(figsize=(10, 10), facecolor='none')
+    area_gdf.boundary.plot(ax=ax, edgecolor="blue", linewidth=1, label="Área de estudio")
+    #bbox_poly.boundary.plot(ax=ax, edgecolor=bbox_color, linestyle="--", linewidth=1, label="Bounding Box")
+    alerts_gdf.plot(ax=ax, color="red", markersize=5, alpha=0.6, label="Alertas integradas")
 
     try:
         ctx.add_basemap(ax, crs=alerts_gdf.crs, source=ctx.providers.OpenStreetMap.Mapnik)
@@ -184,8 +184,8 @@ def plot_alerts_with_boundaries(alerts_gdf: gpd.GeoDataFrame, shapefile_path: st
         print(f"⚠️ No se pudo cargar el basemap: {e}")
 
     ax.set_axis_off()
-    ax.set_title(f"Alertas integradas de deforestación entre {start_date} y {end_date}")
-    plt.legend()
+    #ax.set_title(f"Alertas integradas de deforestación entre {start_date} y {end_date}")
+    plt.legend(loc='upper left')
     plt.tight_layout()
-    plt.savefig(output_path)
+    plt.savefig(output_path, dpi=300, transparent=True, bbox_inches="tight", pad_inches=0)
     plt.close()
