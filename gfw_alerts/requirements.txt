@@ -1,0 +1,12 @@
+json
+dotenv
+os
+requests
+typing
+geopandas 
+pandas
+shapely
+matplotlib
+contextily
+ee
+geemap
