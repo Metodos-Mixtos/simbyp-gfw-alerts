@@ -1,22 +1,11 @@
-from download_gfw_data import (
-    authenticate_gfw,
-    get_api_key,
-    extract_polygon_from_file,
-    download_alerts,
-    save_to_csv,
-    csv_to_geodataframe,
-    save_geodataframe_to_geojson,
-    plot_alerts_with_boundaries, 
-    save_bbox_to_geojson, 
-    summarize_alert_confidences
-)
-
 import json
 from dotenv import load_dotenv
 import os
 
+from gfw_alerts.src.download_gfw_data import authenticate_gfw, get_api_key, extract_polygon_from_file, download_alerts, save_to_csv, csv_to_geodataframe, save_geodataframe_to_geojson, plot_alerts_with_boundaries, save_bbox_to_geojson, summarize_alert_confidences
+
 # Load environment variables from .env file
-load_dotenv("dot_env_content.txt")
+load_dotenv("dot_env_content.env")
 
 # === PARÁMETROS ===
 USERNAME = os.getenv("USERNAME")
