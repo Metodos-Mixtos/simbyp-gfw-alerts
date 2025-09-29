@@ -2,7 +2,7 @@ import json
 from dotenv import load_dotenv
 import os
 
-from gfw_alerts.src.download_gfw_data import authenticate_gfw, get_api_key, extract_polygon_from_file, download_alerts, save_to_csv, csv_to_geodataframe, save_geodataframe_to_geojson, plot_alerts_with_boundaries, save_bbox_to_geojson, summarize_alert_confidences
+from src.download_gfw_data import get_api_key, extract_polygon_from_file, download_alerts, save_to_csv, csv_to_geodataframe, save_geodataframe_to_geojson, plot_alerts_with_boundaries, save_bbox_to_geojson, summarize_alert_confidences
 
 # Load environment variables from .env file
 load_dotenv("dot_env_content.env")
@@ -17,7 +17,8 @@ ONEDRIVE_PATH = os.getenv("ONEDRIVE_PATH")
 
 START_DATE = "2025-01-01"
 END_DATE = "2025-03-31"
-POLYGON_PATH = os.path.join(ONEDRIVE_PATH, "datos/area_estudio/area_estudio_dissolved.geojson")
+INPUTS_PATH = os.getenv("INPUTS_PATH")
+POLYGON_PATH = os.path.join(INPUTS_PATH, "area_estudio/area_estudio_dissolved.geojson")
 
 # Crear carpeta de salida con las fechas
 fecha_rango = f"{START_DATE}_to_{END_DATE}"
