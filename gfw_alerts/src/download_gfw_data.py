@@ -15,6 +15,20 @@ ALERT_COLUMNS = [
     "wur_radd_alerts__confidence"
 ]
 
+def get_start_end_dates(trimestre: str, anio: str):
+    """Devuelve start_date y end_date a partir del trimestre (I–IV) y el año"""
+    if trimestre == "I":
+        start, end = f"{anio}-01-01", f"{anio}-03-31"
+    elif trimestre == "II":
+        start, end = f"{anio}-04-01", f"{anio}-06-30"
+    elif trimestre == "III":
+        start, end = f"{anio}-07-01", f"{anio}-09-30"
+    elif trimestre == "IV":
+        start, end = f"{anio}-10-01", f"{anio}-12-31"
+    else:
+        raise ValueError("Trimestre inválido. Usa 'I', 'II', 'III' o 'IV'.")
+    return start, end
+
 def authenticate_gfw(username: str, password: str) -> str:
     """
     Autentica en la API de Global Forest Watch (GFW).
@@ -161,31 +175,3 @@ def save_bbox_to_geojson(shapefile_path: str, output_path: str):
     bbox_geom = box(bbox[0], bbox[1], bbox[2], bbox[3])
     bbox_poly = gpd.GeoDataFrame(geometry=[bbox_geom], crs="EPSG:4326")
     bbox_poly.to_file(output_path, driver='GeoJSON')
-
-
-
-def plot_alerts_with_boundaries(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, output_path: str, start_date: str, end_date: str, bbox_color="black"):
-    # Proyección a Web Mercator
-    area_gdf = gpd.read_file(shapefile_path).to_crs(epsg=3857)
-    alerts_gdf = alerts_gdf.to_crs(epsg=3857)
-
-    bbox = area_gdf.total_bounds
-    bbox_geom = box(bbox[0], bbox[1], bbox[2], bbox[3])
-    bbox_poly = gpd.GeoDataFrame(geometry=[bbox_geom], crs="EPSG:3857")
-
-    fig, ax = plt.subplots(figsize=(10, 10), facecolor='none')
-    area_gdf.boundary.plot(ax=ax, edgecolor="blue", linewidth=1, label="Área de estudio")
-    #bbox_poly.boundary.plot(ax=ax, edgecolor=bbox_color, linestyle="--", linewidth=1, label="Bounding Box")
-    alerts_gdf.plot(ax=ax, color="red", markersize=5, alpha=0.6, label="Alertas integradas")
-
-    try:
-        ctx.add_basemap(ax, crs=alerts_gdf.crs, source=ctx.providers.OpenStreetMap.Mapnik)
-    except Exception as e:
-        print(f"⚠️ No se pudo cargar el basemap: {e}")
-
-    ax.set_axis_off()
-    #ax.set_title(f"Alertas integradas de deforestación entre {start_date} y {end_date}")
-    plt.legend(loc='upper left')
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, transparent=True, bbox_inches="tight", pad_inches=0)
-    plt.close()

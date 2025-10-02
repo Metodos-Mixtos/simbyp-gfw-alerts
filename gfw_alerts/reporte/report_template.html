@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{TITLE}}</title>
+  <style>
+    body { margin:0; padding:0; background:white; color:#1a1a1a; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.6; }
+    header { background:#E4002D; padding:.75rem 1rem; }
+    header.banner {background: #E4002D;width: 100%;margin: 0 auto;padding: 1.5rem 0;}
+    header img { height:60px; }
+    .wrap { max-width:1000px; margin:0 auto; padding:2rem 1rem 5rem; }
+    h1 { font-size:24pt; font-weight:bold; margin:1.5rem 0 .5rem;}
+    .subtitle { color:#555; font-size:12pt; margin-bottom:2rem; }
+    h2 { font-size:20pt; margin:2rem 0 1rem; color:#8F0000; border-bottom:1px solid #ccc; padding-bottom:.3rem; }
+    h3 { font-size:13pt; margin:1rem 0 .5rem; color:#0a0a0a; }
+    h4 { font-size:13pt; margin:0rem 0 0rem; color:#C00000; }
+    .card { background:#fafafa; border:1px solid #ddd; border-radius:6px; padding:1rem; margin-bottom:1rem; }
+    .card--resaltada{background:#FFF6F6; border:1px solid #ddd; border-radius:6px; padding:1rem; margin-bottom:1rem;}
+    figure { margin:1.5rem 0; text-align:center; }
+    figcaption { font-size:11pt; color:#555; margin-top:.5rem; text-align:left; }
+    .badge { display:inline-block; padding:.2rem .6rem; background:#eee; border-radius:4px; font-size:11pt; color:#333; margin-bottom:.5rem; }
+    ul { margin:.5rem 0 .8rem 1.2rem; }
+    .note { background:#f9f9f9; border:1px dashed #bbb; padding:.6rem; border-radius:6px; font-size:12px; color:#333; }
+    .foot { margin-top:2rem; font-size:11pt; color:#666; }
+    .one-col {display: block; margin-bottom: 1rem;}
+    .two-col { display:grid; grid-template-columns:1.2fr .8fr; gap:1rem; }
+    .kpi { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:.75rem; }
+    .kpi .item { background:#fff; border:1px solid #ddd; border-radius:6px; padding:.75rem; }
+    .item b { display:block; font-size:12pt; margin-bottom:.2rem; }
+    .item span { display:block; font-size:11pt; color:#555; }
+  </style>
+</head>
+<body>
+  <header class="banner">
+  <img src="{{LOGO}}" alt="Secretaría de Planeación, Bogotá" style="height:70px;">
+</header>
+  <div class="wrap">
+    <h1>Reporte trimestral de alertas de deforestación y cambios en el páramo</h1>
+    <div class="subtitle">{{TRIMESTRE}} trimestre de {{ANIO}}</div>
+
+    <section id="deforestation">
+      <h2>Alertas de deforestación</h2>
+      <div class="two-col">
+        <div class="card">
+          <h3>Metodología</h3>
+          <p>Este reporte presenta las alertas de deforestación provenientes de Global Forest Watch para Bogotá y 19 municipios aledaños. Asimismo, incluye una caracterización de las áreas rurales donde se localizan dichas alertas, apoyada en imágenes satelitales y fuentes externas.</p>
+          <p>Las alertas integradas provienen de tres subsistemas: Sentinel-2, Landsat y Radar. Para más información, consulte la plataforma GFW.</p>
+          
+          <div class="note">Para más información, consulte <a href="https://www.globalforestwatch.org/blog/es/data-and-tools/alertas-de-deforestacion-integradas/" target="_blank" rel="noopener noreferrer">Global Forest Watch.</a></div>
+        </div>
+        <div class="card">
+          <h3>Resumen</h3>
+          <div class="kpi">
+            <div class="item">
+              <h4>Alertas Integradas GFW</h4>
+              <span>Nominal: {{GFW_NOMINAL}}</span>
+              <span>Alto: {{GFW_ALTO}}</span>
+              <span>Muy alto: {{GFW_MUY_ALTO}}</span>
+              <span>Total: {{GFW_TOTAL}}</span>
+            </div>
+            <div class="item">
+              <b>UMD GLAD [Landsat]</b>
+              <span>Nominal: {{GLADL_NOMINAL}}</span>
+              <span>Alto: {{GLADL_ALTO}}</span>
+              <span>No detectadas: {{GLADL_NO_DET}}</span>
+              <span>Total: {{GLADL_TOTAL}}</span>
+            </div>
+            <div class="item">
+              <b>UMD GLAD [Sentinel-2]</b>
+              <span>Nominal: {{GLADS_NOMINAL}}</span>
+              <span>Alto: {{GLADS_ALTO}}</span>
+              <span>No detectadas: {{GLADS_NO_DET}}</span>
+              <span>Total: {{GLADS_TOTAL}}</span>
+            </div>
+            <div class="item">
+              <b>WUR RADD</b>
+              <span>Nominal: {{RADD_NOMINAL}}</span>
+              <span>Alto: {{RADD_ALTO}}</span>
+              <span>No detectadas: {{RADD_NO_DET}}</span>
+              <span>Total: {{RADD_TOTAL}}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <figure class="card--resaltada">
+        <h3>Alertas de deforestación en el {{TRIMESTRE}} trimestre de {{ANIO}}</h3>
+        <iframe src="{{MAPA_ALERTAS}}" width="100%" height="600" style="border:none;"></iframe>
+        <figcaption>Fuente: elaboración propia con base en Global Forest Watch.</figcaption>
+      </figure>
+
+      <h3>Alertas de nivel muy alto</h3>
+      <div id="very-high-sections">
+      {{#SECCIONES_MUY_ALTO}} 
+      <div class="card--resaltada">
+        <h4 class="badge">Municipio: {{municipio}}</h4>
+        <h3>Vereda: {{vereda}}</h3>
+
+        <ul class="bullets-metricas">
+          <li>Densidad poblacional: {{densidad_poblacional}} personas por km².</li>
+          <li>PIB per cápita (2020): {{pib_m2}} USD.</li>
+          <li>Distancia promedio a centro urbano: {{mercado_acceso}} minutos.</li>
+          <li>Elevación promedio: {{elevacion}} MSNM.</li>
+          <li>Índice de deprivación: {{ ind_priv}}%.</li>
+          <li>Acceso a energía eléctrica: {{energia_pct}}%.</li>
+          <li>Acceso a alcantarillado: {{alcantarillado_pct}}%.</li>
+          <li>Acceso a internet: {{internet_pct}}%.</li>
+        </ul>
+
+        <figure>
+          <img src="{{mapa_cluster}}" alt="{{municipio}}, {{vereda}}" style="width:30%; border-radius:4px; border:1px solid #ccc;">
+          <figcaption>Imagen de Sentinel-2 para {{municipio}}, {{vereda}}.</figcaption>
+        </figure>
+      </div>
+      {{/SECCIONES_MUY_ALTO}}
+
+  </div>
+</body>
+</html>
