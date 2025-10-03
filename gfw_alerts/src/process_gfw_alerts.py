@@ -12,7 +12,6 @@ from matplotlib_scalebar.scalebar import ScaleBar
 from sklearn.neighbors import BallTree
 
 
-
 def process_alerts(alerts_path: str, veredas_path: str, secciones_path: str) -> gpd.GeoDataFrame:
     """
     Procesa las alertas de deforestación:
@@ -27,7 +26,7 @@ def process_alerts(alerts_path: str, veredas_path: str, secciones_path: str) -> 
         'MPIO_CDPMP', 'SECR_CCNCT', 'STVIVIENDA', 'STP19_EC_1', 'STP19_ES_2',
         'STP19_ACU1', 'STP19_ACU2', 'STP19_ALC1', 'STP19_ALC2', 'STP19_GAS1',
         'STP19_GAS2', 'STP19_REC1', 'STP19_REC2', 'STP19_INT1', 'STP19_INT2',
-        'STP27_PERS', 'popcount20', 'gdp_20_m2_', 'acss_mrkt',
+        'STP27_PERS', 'pobdens20', 'gdp_20_m2p', 'acss_mrkt',
         'elevation', 'dprivt', 'treecv_24', 'geometry'
     ]
     secciones = secciones[cols_to_filter].copy()
@@ -118,6 +117,8 @@ def create_cluster_maps(clusters_gdf, alerts_gdf, sentinel_images_dir, output_di
         with rasterio.open(sentinel_img) as src:
             img = src.read([1, 2, 3])
             bounds = src.bounds
+            transform = src.transform
+            res = transform.a
 
         # Normalización simple para mejorar visualización
         img = img.astype(float)
@@ -132,16 +133,16 @@ def create_cluster_maps(clusters_gdf, alerts_gdf, sentinel_images_dir, output_di
 
         # === Puntos de alerta en este cluster ===
         cluster_points = alerts_gdf[alerts_gdf["cluster_id"] == cluster["cluster_id"]]
-        cluster_points.plot(ax=ax, color="red", markersize=20, label="Alerta")
+        cluster_points.plot(ax=ax, color="red", markersize=30, label="Alerta")
         
         # Barra de escala
-        scalebar = ScaleBar(10, units="m", location="lower left")  # Sentinel resolución = 10m
+        scalebar = ScaleBar(dx=res, units="m", dimension="si-length", location="lower left", scale_loc="bottom", length_fraction=0.25) 
         ax.add_artist(scalebar)
 
         # Leyenda y flecha norte
         ax.legend(loc="lower right")
         ax.annotate(
-            "N", xy=(0.95, 0.15), xytext=(0.95, 0.3),
+            "N", xy=(0.95, 0.3), xytext=(0.95, 0.15),
             arrowprops=dict(facecolor='black', width=5, headwidth=15),
             ha='center', va='center', xycoords=ax.transAxes
         )
@@ -160,104 +161,6 @@ def create_cluster_maps(clusters_gdf, alerts_gdf, sentinel_images_dir, output_di
         })
 
     return cluster_maps
-
-def build_report_json(summary, alerts_with_clusters, cluster_maps, trimestre, anio, ruta_logo, ruta_mapa_alertas, output_path):
-    """
-    Construye un JSON consolidado con alertas, clusters y mapas enriquecidos.
-    """
-    # Base inicial
-    report_data = {
-        "TRIMESTRE": trimestre,
-        "ANIO": anio,
-        "LOGO": ruta_logo,
-        "MAPA_ALERTAS": ruta_mapa_alertas,
-        # GFW
-        "GFW_NOMINAL": summary["gfw_integrated_alerts__confidence"].get("nominal", 0),
-        "GFW_ALTO": summary["gfw_integrated_alerts__confidence"].get("high", 0),
-        "GFW_MUY_ALTO": summary["gfw_integrated_alerts__confidence"].get("highest", 0),
-        "GFW_TOTAL": summary["gfw_integrated_alerts__confidence"].get("total", 0),
-        
-        # GLAD Landsat
-        "GLADL_NOMINAL": summary["umd_glad_landsat_alerts__confidence"].get("nominal", 0),
-        "GLADL_ALTO": summary["umd_glad_landsat_alerts__confidence"].get("high", 0),
-        "GLADL_NO_DET": summary["umd_glad_landsat_alerts__confidence"].get("not_detected", 0),
-        "GLADL_TOTAL": summary["umd_glad_landsat_alerts__confidence"].get("total", 0),
-
-        # GLAD Sentinel-2
-        "GLADS_NOMINAL": summary["umd_glad_sentinel2_alerts__confidence"].get("nominal", 0),
-        "GLADS_ALTO": summary["umd_glad_sentinel2_alerts__confidence"].get("high", 0),
-        "GLADS_NO_DET": summary["umd_glad_sentinel2_alerts__confidence"].get("not_detected", 0),
-        "GLADS_TOTAL": summary["umd_glad_sentinel2_alerts__confidence"].get("total", 0),
-
-        # WUR RADD
-        "RADD_NOMINAL": summary["wur_radd_alerts__confidence"].get("nominal", 0),
-        "RADD_ALTO": summary["wur_radd_alerts__confidence"].get("high", 0),
-        "RADD_NO_DET": summary["wur_radd_alerts__confidence"].get("not_detected", 0),
-        "RADD_TOTAL": summary["wur_radd_alerts__confidence"].get("total", 0),
-        "SECCIONES_MUY_ALTO": []
-    }
-
-    # Loop de clusters
-    for _, row in alerts_with_clusters.drop_duplicates("cluster_id").iterrows():
-        cid = row["cluster_id"]
-
-        # Buscar el mapa asociado
-        map_path = next((m["map_path"] for m in cluster_maps if m["cluster_id"] == cid), None)
-
-        cluster_info = {
-            "cluster_id": int(cid),
-            "municipio": row.get("NOMB_MPIO", ""),
-            "vereda": row.get("NOMBRE_VER", ""),
-            "densidad_poblacional": row.get("popcount20", None),
-            "pib_m2": row.get("gdp_20_m2_", None),
-            "mercado_acceso": row.get("acss_mrkt", None),
-            "elevacion": row.get("elevation", None),
-            "ind_priv": row.get("dprivt", None),
-            "cobertura_arboles": row.get("treecv_24", None),
-            "energia_pct": row.get("ENRG_PERC", None),
-            "acueducto_pct": row.get("ACUED_PERC", None),
-            "alcantarillado_pct": row.get("ALCLT_PERC", None),
-            "gas_pct": row.get("GAS_PERC", None),
-            "basura_pct": row.get("BASUR_PERC", None),
-            "internet_pct": row.get("INTER_PERC", None),
-            "mapa_cluster": map_path
-        }
-
-        report_data["SECCIONES_MUY_ALTO"].append(cluster_info)
-
-    # Guardar JSON
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(report_data, f, indent=2, ensure_ascii=False)
-
-    print(f"✅ JSON final guardado en: {output_path}")
-    return report_data
-
-def plot_alerts_with_boundaries(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, output_path: str, start_date: str, end_date: str, bbox_color="black"):
-    # Proyección a Web Mercator
-    area_gdf = gpd.read_file(shapefile_path).to_crs(epsg=3857)
-    alerts_gdf = alerts_gdf.to_crs(epsg=3857)
-
-    bbox = area_gdf.total_bounds
-    bbox_geom = box(bbox[0], bbox[1], bbox[2], bbox[3])
-    bbox_poly = gpd.GeoDataFrame(geometry=[bbox_geom], crs="EPSG:3857")
-
-    fig, ax = plt.subplots(figsize=(10, 10), facecolor='none')
-    area_gdf.boundary.plot(ax=ax, edgecolor="blue", linewidth=1, label="Área de estudio")
-    #bbox_poly.boundary.plot(ax=ax, edgecolor=bbox_color, linestyle="--", linewidth=1, label="Bounding Box")
-    alerts_gdf.plot(ax=ax, color="red", markersize=5, alpha=0.6, label="Alertas integradas")
-
-    try:
-        ctx.add_basemap(ax, crs=alerts_gdf.crs, source=ctx.providers.OpenStreetMap.Mapnik)
-    except Exception as e:
-        print(f"⚠️ No se pudo cargar el basemap: {e}")
-
-    ax.set_axis_off()
-    #ax.set_title(f"Alertas integradas de deforestación entre {start_date} y {end_date}")
-    plt.legend(loc='upper left')
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, transparent=True, bbox_inches="tight", pad_inches=0)
-    plt.close()
-
 
 def plot_alerts_interactive(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, output_path: str):
     """
@@ -342,6 +245,3 @@ def plot_alerts_interactive(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, o
 
     # Guardar el mapa
     m.save(output_path)
-
-
-    
