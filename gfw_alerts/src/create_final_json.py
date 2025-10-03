@@ -1,16 +1,22 @@
 import json
+import os
 
+def make_relative(path, base):
+    if path and os.path.isabs(path):
+        return os.path.relpath(path, base)
+    return path
 
 def build_report_json(summary, alerts_with_clusters, cluster_maps, trimestre, anio, ruta_logo, ruta_mapa_alertas, output_path, sentinel_results=None):
     """
     Construye un JSON consolidado con alertas, clusters y mapas enriquecidos.
     """
+    base_folder = os.path.dirname(output_path)  
     # Base inicial
     report_data = {
         "TRIMESTRE": trimestre,
         "ANIO": anio,
-        "LOGO": ruta_logo,
-        "MAPA_ALERTAS": ruta_mapa_alertas,
+        "LOGO": make_relative(ruta_logo, base_folder),
+        "MAPA_ALERTAS": make_relative(ruta_mapa_alertas, base_folder),
         # GFW
         "GFW_NOMINAL": summary["gfw_integrated_alerts__confidence"].get("nominal", 0),
         "GFW_ALTO": summary["gfw_integrated_alerts__confidence"].get("high", 0),
@@ -48,6 +54,9 @@ def build_report_json(summary, alerts_with_clusters, cluster_maps, trimestre, an
         map_path = next((m["map_path"] for m in cluster_maps if m["cluster_id"] == cid), None)
         
         obs = obs_lookup.get(cid, None)
+        
+        geom = row.geometry
+        centroid = geom.centroid
 
         cluster_info = {
             "cluster_id": int(cid),
@@ -65,7 +74,9 @@ def build_report_json(summary, alerts_with_clusters, cluster_maps, trimestre, an
             "gas_pct": row.get("GAS_PERC", None),
             "basura_pct": row.get("BASUR_PERC", None),
             "internet_pct": row.get("INTER_PERC", None),
-            "mapa_cluster": map_path,
+            "mapa_cluster": make_relative(map_path, base_folder),    
+            "lat": centroid.y,
+            "lon": centroid.x,
             "OBSERVACION_IMAGEN": [obs] if obs else []
         }
 

@@ -48,7 +48,7 @@ def download_sentinel_rgb_for_region(region_geom, start_date, end_date, output_p
         scale=10,
         crs="EPSG:4326")
         
-        return f"Rango ampliado: {new_start} a {end_date}"
+        return f"Dado que no se encontraron imágenes vádilas en el trimestre seleccionado, se amplió el rango de búsqueda del {new_start} al {end_date}"
 
 
     image = collection.median().clip(region)
