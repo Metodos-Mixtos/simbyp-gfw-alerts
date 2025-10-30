@@ -66,7 +66,6 @@ if __name__ == "__main__":
     
     print("🔐 Autenticando en GFW...")
     token = authenticate_gfw(username=USERNAME, password=PASSWORD)
-    #token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MDY5NzE5Y2EwOGIwM2VhMjAyOWM1YiIsInJvbGUiOiJVU0VSIiwicHJvdmlkZXIiOiJsb2NhbCIsImVtYWlsIjoiamF2aWVyZ3VlcnJhbTFAZ21haWwuY29tIiwiZXh0cmFVc2VyRGF0YSI6eyJhcHBzIjpbImdmdyJdfSwiY3JlYXRlZEF0IjoxNzUzMzg3ODEwODA3LCJpYXQiOjE3NTMzODc4MTB9.21cgPqRGAkFtdd6uQV6TDLP7Xq7s7Hj1WyHVeAnM70Y'
 
     print("🔑 Solicitando API key...")
     api_key = get_api_key(token, alias=ALIAS, email=EMAIL, organization=ORG)
