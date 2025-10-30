@@ -5,7 +5,7 @@ import os
 from shapely.geometry import Polygon
 from datetime import datetime, timedelta
 
-def authenticate_gee(project='bosques-bogota-416214'):
+def authenticate_gee(project):
     try:
         ee.Initialize(project=project)
     except Exception:

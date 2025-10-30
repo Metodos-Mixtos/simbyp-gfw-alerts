@@ -2,7 +2,7 @@ import argparse
 from dotenv import load_dotenv
 import os
 
-from src.download_gfw_data import get_api_key, get_start_end_dates, extract_polygon_from_file, download_alerts, save_to_csv, csv_to_geodataframe, save_geodataframe_to_geojson, summarize_alert_confidences
+from src.download_gfw_data import get_api_key, get_start_end_dates, extract_polygon_from_file, download_alerts, save_to_csv, csv_to_geodataframe, save_geodataframe_to_geojson, summarize_alert_confidences, authenticate_gfw
 from src.process_gfw_alerts import process_alerts, cluster_alerts_by_section, get_cluster_bboxes, create_cluster_maps, plot_alerts_interactive
 from src.download_sentinel_images import authenticate_gee, download_sentinel_rgb_for_region
 from src.create_final_json import build_report_json
@@ -20,6 +20,7 @@ ALIAS = os.getenv("ALIAS")
 EMAIL = os.getenv("EMAIL")
 ORG = os.getenv("ORG")
 ONEDRIVE_PATH = os.getenv("ONEDRIVE_PATH")
+GOOGLE_CLOUD_PROJECT = os.getenv("GCP_PROJECT")
 
 #TRIMESTRE = "I"
 #ANIO = "2025"
@@ -64,7 +65,8 @@ if __name__ == "__main__":
     OUT_PATH  = Path(OUTPUT_FOLDER) / "reporte_final.html"
     
     print("🔐 Autenticando en GFW...")
-    token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MDY5NzE5Y2EwOGIwM2VhMjAyOWM1YiIsInJvbGUiOiJVU0VSIiwicHJvdmlkZXIiOiJsb2NhbCIsImVtYWlsIjoiamF2aWVyZ3VlcnJhbTFAZ21haWwuY29tIiwiZXh0cmFVc2VyRGF0YSI6eyJhcHBzIjpbImdmdyJdfSwiY3JlYXRlZEF0IjoxNzUzMzg3ODEwODA3LCJpYXQiOjE3NTMzODc4MTB9.21cgPqRGAkFtdd6uQV6TDLP7Xq7s7Hj1WyHVeAnM70Y'
+    token = authenticate_gfw(username=USERNAME, password=PASSWORD)
+    #token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MDY5NzE5Y2EwOGIwM2VhMjAyOWM1YiIsInJvbGUiOiJVU0VSIiwicHJvdmlkZXIiOiJsb2NhbCIsImVtYWlsIjoiamF2aWVyZ3VlcnJhbTFAZ21haWwuY29tIiwiZXh0cmFVc2VyRGF0YSI6eyJhcHBzIjpbImdmdyJdfSwiY3JlYXRlZEF0IjoxNzUzMzg3ODEwODA3LCJpYXQiOjE3NTMzODc4MTB9.21cgPqRGAkFtdd6uQV6TDLP7Xq7s7Hj1WyHVeAnM70Y'
 
     print("🔑 Solicitando API key...")
     api_key = get_api_key(token, alias=ALIAS, email=EMAIL, organization=ORG)
@@ -94,7 +96,7 @@ if __name__ == "__main__":
     clusters_bboxes = get_cluster_bboxes(alerts_with_clusters) #Obtener bboxes por cluster
     
     print("⬇️ Descargando imágenes de Sentinel-2...")
-    authenticate_gee()
+    authenticate_gee(project=GOOGLE_CLOUD_PROJECT)
     
     sentinel_results = []
     for _, row in clusters_bboxes.iterrows():
