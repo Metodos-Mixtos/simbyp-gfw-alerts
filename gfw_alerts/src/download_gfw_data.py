@@ -165,7 +165,6 @@ def summarize_alert_confidences(df: pd.DataFrame) -> Dict[str, Dict[str, int]]:
             summary[column] = column_summary
     return summary
 
-
 def save_geodataframe_to_geojson(gdf: gpd.GeoDataFrame, output_path: str):
     gdf.to_file(output_path, driver='GeoJSON')
     
