@@ -37,9 +37,9 @@ GOOGLE_CLOUD_PROJECT = os.getenv("GCP_PROJECT")
 INPUTS_PATH = os.getenv("INPUTS_PATH")
 
 # === Rutas de insumos ===
-POLYGON_PATH = os.path.join(INPUTS_PATH, "gfw/area_estudio/area_estudio.geojson")
-VEREDAS_PATH = os.path.join(INPUTS_PATH, "gfw/area_estudio/veredas_cund_2024/veredas_cund_2024.shp")
-SECCIONES_PATH = os.path.join(INPUTS_PATH, "gfw/panel_secciones_rurales/V3/panel_SDP_29092025-v3.shp")
+POLYGON_PATH = os.path.join(INPUTS_PATH, "area_estudio", "gfw", "area_estudio.geojson")
+VEREDAS_PATH = os.path.join(INPUTS_PATH, "area_estudio", "gfw", "veredas_cund_2024/veredas_cund_2024.shp")
+SECCIONES_PATH = os.path.join(INPUTS_PATH, "area_estudio", "gfw", "panel_secciones_rurales", "V3/panel_SDP_29092025-v3.shp")
 LOGO_PATH = os.path.join(INPUTS_PATH, "Logo_SDP.jpeg")
 
 if __name__ == "__main__":
