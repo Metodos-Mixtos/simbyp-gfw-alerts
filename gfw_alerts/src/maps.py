@@ -6,7 +6,6 @@ import rasterio
 import folium
 import ee
 import json
-
 from matplotlib_scalebar.scalebar import ScaleBar
 
 def create_cluster_maps(clusters_gdf, alerts_gdf, sentinel_images_dir, output_dir):
@@ -175,10 +174,6 @@ def plot_sentinel_cluster_interactive(
     - Puntos de alertas (solo las de nivel 'highest')
     - Leyenda fija en pantalla
     """
-    import folium
-    import geopandas as gpd
-    import json
-    import ee
 
     ee.Initialize(project=project)
 
