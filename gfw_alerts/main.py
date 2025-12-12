@@ -24,11 +24,13 @@ from src.create_final_json import build_report_json
 from src.maps import plot_alerts_interactive, plot_sentinel_cluster_interactive
 from reporte.render_report import render
 
-# === Cargar variables de entorno ===
-load_dotenv("dot_env_content.env")
+# Cargar variables de entorno 
+# Buscar el .env en la raíz del proyecto (un nivel arriba de bosques-bog)
+env_path = Path(__file__).parent.parent.parent / "dot_env_content.env"
+load_dotenv(env_path)
 
-USERNAME = os.getenv("USERNAME")
-PASSWORD = os.getenv("PASSWORD")
+USERNAME = os.getenv("GFW_USERNAME")
+PASSWORD = os.getenv("GFW_PASSWORD")
 ALIAS = os.getenv("ALIAS")
 EMAIL = os.getenv("EMAIL")
 ORG = os.getenv("ORG")
@@ -40,7 +42,9 @@ INPUTS_PATH = os.getenv("INPUTS_PATH")
 POLYGON_PATH = os.path.join(INPUTS_PATH, "area_estudio", "gfw", "area_estudio.geojson")
 VEREDAS_PATH = os.path.join(INPUTS_PATH, "area_estudio", "gfw", "veredas_cund_2024/veredas_cund_2024.shp")
 SECCIONES_PATH = os.path.join(INPUTS_PATH, "area_estudio", "gfw", "panel_secciones_rurales", "V3/panel_SDP_29092025-v3.shp")
-LOGO_PATH = os.path.join(INPUTS_PATH, "Logo_SDP.jpeg")
+HEADER_IMG1_PATH = os.path.join(INPUTS_PATH, "area_estudio", "asi_4.png")
+HEADER_IMG2_PATH = os.path.join(INPUTS_PATH, "area_estudio", "bogota_4.png")
+FOOTER_IMG_PATH = os.path.join(INPUTS_PATH, "area_estudio", "secre_5.png")
 
 if __name__ == "__main__":
     # === Argumentos de ejecución ===
@@ -129,7 +133,9 @@ if __name__ == "__main__":
         alerts_with_clusters,
         trimestre=TRIMESTRE,
         anio=ANIO,
-        ruta_logo=LOGO_PATH,
+        ruta_header_img1=HEADER_IMG1_PATH,
+        ruta_header_img2=HEADER_IMG2_PATH,
+        ruta_footer_img=FOOTER_IMG_PATH,
         ruta_mapa_alertas=MAP_OUTPUT_PATH,
         output_path=JSON_FINAL_PATH,
         sentinel_results=sentinel_results

@@ -14,7 +14,9 @@ def build_report_json(
     alerts_with_clusters,
     trimestre,
     anio,
-    ruta_logo,
+    ruta_header_img1,
+    ruta_header_img2,
+    ruta_footer_img,
     ruta_mapa_alertas,
     output_path,
     sentinel_results=None
@@ -48,7 +50,9 @@ def build_report_json(
     report_data = {
         "TRIMESTRE": trimestre,
         "ANIO": anio,
-        "LOGO": os.path.relpath(ruta_logo, base_folder),
+        "HEADER_IMG1": os.path.relpath(ruta_header_img1, base_folder),
+        "HEADER_IMG2": os.path.relpath(ruta_header_img2, base_folder),
+        "FOOTER_IMG": os.path.relpath(ruta_footer_img, base_folder),
         "MAPA_ALERTAS": os.path.relpath(ruta_mapa_alertas, base_folder),
         # GFW
         "GFW_NOMINAL": summary["gfw_integrated_alerts__confidence"].get("nominal", 0),
