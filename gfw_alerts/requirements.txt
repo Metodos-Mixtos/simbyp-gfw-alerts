@@ -11,3 +11,4 @@ contextily
 ee
 geemap
 matplotlib-scalebar
+gcsfs

@@ -1,6 +1,8 @@
 import json
 import os
 import locale
+from google.cloud import storage
+
 def make_relative(path, base):
     if path and os.path.isabs(path):
         return os.path.relpath(path, base)
@@ -79,8 +81,10 @@ def build_report_json(
 
     # === Relación entre clusters y observaciones ===
     obs_lookup = {}
+    map_lookup = {}
     if sentinel_results:
         obs_lookup = {res["cluster_id"]: res.get("obs", None) for res in sentinel_results}
+        map_lookup = {res["cluster_id"]: res["map_html"] for res in sentinel_results}
 
     # === Construir secciones ===
     for _, row in alerts_with_clusters.drop_duplicates("cluster_id").iterrows():
@@ -102,7 +106,6 @@ def build_report_json(
             "gas_pct": fmt(row.get("GAS_PERC")),
             "basura_pct": fmt(row.get("BASUR_PERC")),
             "internet_pct": fmt(row.get("INTER_PERC")),
-            "mapa_sentinel": f"sentinel_imagenes/sentinel_cluster_{cid}.html",
             "lat": round(centroid.y, 6),
             "lon": round(centroid.x, 6),
         }
@@ -111,11 +114,35 @@ def build_report_json(
         if obs:
             cluster_info["OBSERVACION_IMAGEN"] = [obs]
 
+        map_path = map_lookup.get(cid)
+        if map_path:
+            cluster_info["mapa_sentinel"] = os.path.relpath(map_path, base_folder)
+
         report_data["SECCIONES_MUY_ALTO"].append(cluster_info)
 
     # === Guardar JSON ===
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(report_data, f, indent=2, ensure_ascii=False)
+    # If output_path is a GCS URI (gs://bucket/path/to/file.json) upload to the bucket,
+    # otherwise save locally as before.
+    if isinstance(output_path, str) and output_path.startswith("gs://"):
+        # prepare JSON string (preserve utf-8)
+        json_str = json.dumps(report_data, indent=2, ensure_ascii=False)
 
-    print(f"✅ JSON final guardado en: {output_path}")
+        # parse bucket and blob path
+        _prefix, rest = output_path.split("gs://", 1)
+        parts = rest.split("/", 1)
+        bucket_name = parts[0]
+        blob_path = parts[1] if len(parts) > 1 else ""
+
+        # upload using google-cloud-storage client (uses GOOGLE_APPLICATION_CREDENTIALS)
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_path)
+
+        blob.upload_from_string(json_str.encode("utf-8"), content_type="application/json")
+        print(f"✅ JSON final subido a: {output_path}")
+    else:
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(report_data, f, indent=2, ensure_ascii=False)
+        print(f"✅ JSON final guardado en: {output_path}")
+
     return report_data

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import json, re
 from pathlib import Path
+from google.cloud import storage
 
 SECTION_PAT = re.compile(r"{{#(\w+)}}(.*?){{/\1}}", re.DOTALL)
 TOKEN_PAT   = re.compile(r"{{\s*([\w\.]+)\s*}}")
@@ -35,9 +36,34 @@ def build_header(header_dict):
     </header>
     """
 
+def _read_text(path):
+    p = str(path)
+    if p.startswith("gs://"):
+        # parse gs://bucket/path/to/blob
+        _, rest = p.split("gs://", 1)
+        bucket_name, blob_path = rest.split("/", 1)
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_path)
+        return blob.download_as_bytes().decode("utf-8")
+    else:
+        return Path(p).read_text(encoding="utf-8")
+
+def _write_text(path, content):
+    p = str(path)
+    if p.startswith("gs://"):
+        _, rest = p.split("gs://", 1)
+        bucket_name, blob_path = rest.split("/", 1)
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_path)
+        blob.upload_from_string(content, content_type="text/html; charset=utf-8")
+    else:
+        Path(p).write_text(content, encoding="utf-8")
+
 def render(template_path: Path, data_path: Path, out_path: Path):
-    template = template_path.read_text(encoding="utf-8")
-    data = json.loads(data_path.read_text(encoding="utf-8"))
+    template = _read_text(template_path)
+    data = json.loads(_read_text(data_path))
 
     # Convierte el dict HEADER a HTML antes de renderizar
     data["HEADER"] = build_header(data.get("HEADER"))
@@ -45,7 +71,7 @@ def render(template_path: Path, data_path: Path, out_path: Path):
     # Renderiza tokens + secciones
     html = render_template(template, data)
 
-    out_path.write_text(html, encoding="utf-8")
+    _write_text(out_path, html)
     return out_path
 
 def render_template(tpl: str, root: dict) -> str:

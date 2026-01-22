@@ -281,6 +281,10 @@ def plot_sentinel_cluster_interactive(
     folium.LayerControl(collapsed=False).add_to(m)
 
     # === Guardar mapa ===
-    m.save(output_path)
-    print(f"✅ Mapa interactivo del cluster {cluster_id} guardado en: {output_path}")
-    return output_path
+    try:
+        m.save(output_path)
+        print(f"✅ Mapa interactivo del cluster {cluster_id} guardado en: {output_path}")
+        return output_path
+    except Exception as e:
+        print(f"❌ Error generando mapa para cluster {cluster_id}: {e}")
+        return None
