@@ -3,6 +3,11 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 import dotenv
+import warnings
+
+# Suppress urllib3 SSL warning
+warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+")
+
 dotenv.load_dotenv()
 
 # Authenticate with Google Cloud

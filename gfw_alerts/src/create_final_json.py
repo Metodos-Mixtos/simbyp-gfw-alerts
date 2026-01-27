@@ -76,6 +76,14 @@ def build_report_json(
         "RADD_ALTO": summary["wur_radd_alerts__confidence"].get("high", 0),
         "RADD_NO_DET": summary["wur_radd_alerts__confidence"].get("not_detected", 0),
         "RADD_TOTAL": summary["wur_radd_alerts__confidence"].get("total", 0),
+        "METODOLOGIA": """
+        <section class="metodologia">
+            <h2>Metodología</h2>
+            <p>Este reporte presenta las alertas de deforestación provenientes de Global Forest Watch para Bogotá y 19 municipios aledaños. Asimismo, incluye una caracterización de las áreas rurales donde se localizan dichas alertas, apoyada en imágenes satelitales y fuentes externas.</p>
+            <p>Las alertas integradas provienen de tres subsistemas: Sentinel-2, Landsat y Radar. Para más información, consulte la plataforma GFW.</p>
+            <p>Para más información, consulte Global Forest Watch.</p>
+        </section>
+        """,
         "SECCIONES_MUY_ALTO": []
     }
 

@@ -18,6 +18,7 @@
     h4 { font-size:13pt; margin:0rem 0 0rem; color:#C00000; }
     .card { background:#fafafa; border:1px solid #ddd; border-radius:6px; padding:1rem; margin-bottom:1rem; }
     .card--resaltada{background:#FFF6F6; border:1px solid #ddd; border-radius:6px; padding:1rem; margin-bottom:1rem;}
+    .resumen-card { max-width: 800px; margin: 0 auto; } /* Center and flexible width */
     figure { margin:1.5rem 0; text-align:center; }
     figcaption { font-size:11pt; color:#555; margin-top:.5rem; text-align:left; }
     .badge { display:inline-block; padding:.2rem .6rem; background:#eee; border-radius:4px; font-size:11pt; color:#333; margin-bottom:.5rem; }
@@ -30,6 +31,26 @@
     .kpi .item { background:#fff; border:1px solid #ddd; border-radius:6px; padding:.75rem; }
     .item b { display:block; font-size:12pt; margin-bottom:.2rem; }
     .item span { display:block; font-size:11pt; color:#555; }
+
+    /* Responsive CSS for mobile */
+    @media (max-width: 768px) {
+      body { font-size: 14px; padding: 10px; }
+      .card { margin: 10px 0; padding: 10px; }
+      .badge { font-size: 12px; }
+      h3 { font-size: 18px; }
+      ul { padding-left: 20px; }
+      figure img { width: 100%; height: auto; }
+      .metodologia { padding: 10px; font-size: 14px; }
+      header img { height: 40px; } /* Smaller header on mobile */
+      .resumen-card { max-width: 100%; } /* Full width on mobile */
+    }
+    
+    @media (max-width: 480px) {
+      body { font-size: 12px; }
+      h2 { font-size: 16px; }
+      h3 { font-size: 16px; }
+      .metodologia p { margin: 8px 0; }
+    }
   </style>
 </head>
 <body>
@@ -43,45 +64,36 @@
 
     <section id="deforestation">
       <h2>Alertas de deforestación</h2>
-      <div class="two-col">
-        <div class="card">
-          <h3>Metodología</h3>
-          <p>Este reporte presenta las alertas de deforestación provenientes de Global Forest Watch para Bogotá y 19 municipios aledaños. Asimismo, incluye una caracterización de las áreas rurales donde se localizan dichas alertas, apoyada en imágenes satelitales y fuentes externas.</p>
-          <p>Las alertas integradas provienen de tres subsistemas: Sentinel-2, Landsat y Radar. Para más información, consulte la plataforma GFW.</p>
-          
-          <div class="note">Para más información, consulte <a href="https://www.globalforestwatch.org/blog/es/data-and-tools/alertas-de-deforestacion-integradas/" target="_blank" rel="noopener noreferrer">Global Forest Watch.</a></div>
-        </div>
-        <div class="card">
-          <h3>Resumen</h3>
-          <div class="kpi">
-            <div class="item">
-              <h4>Alertas Integradas GFW</h4>
-              <span>Nominal: {{GFW_NOMINAL}}</span>
-              <span>Alto: {{GFW_ALTO}}</span>
-              <span>Muy alto: {{GFW_MUY_ALTO}}</span>
-              <span>Total: {{GFW_TOTAL}}</span>
-            </div>
-            <div class="item">
-              <b>UMD GLAD [Landsat]</b>
-              <span>Nominal: {{GLADL_NOMINAL}}</span>
-              <span>Alto: {{GLADL_ALTO}}</span>
-              <span>No detectadas: {{GLADL_NO_DET}}</span>
-              <span>Total: {{GLADL_TOTAL}}</span>
-            </div>
-            <div class="item">
-              <b>UMD GLAD [Sentinel-2]</b>
-              <span>Nominal: {{GLADS_NOMINAL}}</span>
-              <span>Alto: {{GLADS_ALTO}}</span>
-              <span>No detectadas: {{GLADS_NO_DET}}</span>
-              <span>Total: {{GLADS_TOTAL}}</span>
-            </div>
-            <div class="item">
-              <b>WUR RADD</b>
-              <span>Nominal: {{RADD_NOMINAL}}</span>
-              <span>Alto: {{RADD_ALTO}}</span>
-              <span>No detectadas: {{RADD_NO_DET}}</span>
-              <span>Total: {{RADD_TOTAL}}</span>
-            </div>
+      <div class="card resumen-card">
+        <h3>Resumen</h3>
+        <div class="kpi">
+          <div class="item">
+            <h4>Alertas Integradas GFW</h4>
+            <span>Nominal: {{GFW_NOMINAL}}</span>
+            <span>Alto: {{GFW_ALTO}}</span>
+            <span>Muy alto: {{GFW_MUY_ALTO}}</span>
+            <span>Total: {{GFW_TOTAL}}</span>
+          </div>
+          <div class="item">
+            <b>UMD GLAD [Landsat]</b>
+            <span>Nominal: {{GLADL_NOMINAL}}</span>
+            <span>Alto: {{GLADL_ALTO}}</span>
+            <span>No detectadas: {{GLADL_NO_DET}}</span>
+            <span>Total: {{GLADL_TOTAL}}</span>
+          </div>
+          <div class="item">
+            <b>UMD GLAD [Sentinel-2]</b>
+            <span>Nominal: {{GLADS_NOMINAL}}</span>
+            <span>Alto: {{GLADS_ALTO}}</span>
+            <span>No detectadas: {{GLADS_NO_DET}}</span>
+            <span>Total: {{GLADS_TOTAL}}</span>
+          </div>
+          <div class="item">
+            <b>WUR RADD</b>
+            <span>Nominal: {{RADD_NOMINAL}}</span>
+            <span>Alto: {{RADD_ALTO}}</span>
+            <span>No detectadas: {{RADD_NO_DET}}</span>
+            <span>Total: {{RADD_TOTAL}}</span>
           </div>
         </div>
       </div>
@@ -124,6 +136,14 @@
       </div>
       {{/SECCIONES_MUY_ALTO}}
     </section>
+
+    <!-- Add METODOLOGIA at the end -->
+    <div class="metodologia">
+      <h2>Metodología</h2>
+      <p>Este reporte utiliza datos de alertas de deforestación de Global Forest Watch, que combina información de múltiples fuentes y satélites para detectar cambios en la cobertura forestal.</p>
+      <p>Las alertas se generan a partir de la comparación de imágenes satelitales de diferentes fechas, identificando áreas donde ha ocurrido una pérdida de cobertura arbórea.</p>
+      <p>Para más detalles sobre la metodología, visite la sección de <a href="https://www.globalforestwatch.org/blog/es/data-and-tools/alertas-de-deforestacion-integradas/" target="_blank" rel="noopener noreferrer">Metodología de GFW</a>.</p>
+    </div>
   </div>
   
   <footer class="banner">
