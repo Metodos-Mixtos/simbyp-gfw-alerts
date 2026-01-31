@@ -1,0 +1,14 @@
+python-dotenv
+requests
+geopandas
+pandas
+shapely
+matplotlib
+contextily
+ee
+geemap
+matplotlib-scalebar
+gcsfs
+google-cloud-storage
+scikit-learn
+tenacity
