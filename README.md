@@ -4,6 +4,8 @@ Este repositorio contiene herramientas para el análisis y monitoreo de alertas 
 
 ## Estructura del Repositorio
 - `main.py`: Script principal para ejecutar el pipeline completo de alertas GFW.
+  - Modo semanal: sin argumentos, genera reporte de la semana anterior
+  - Modo trimestral: con `--trimestre` y `--anio`, genera reporte trimestral
 - `src/`: Módulos del pipeline.
   - `download_gfw_data.py`: Descarga de datos desde GFW API.
   - `process_gfw_alerts.py`: Procesamiento y enriquecimiento de alertas.
@@ -15,7 +17,7 @@ Este repositorio contiene herramientas para el análisis y monitoreo de alertas 
 - `requirements.txt`: Dependencias Python.
 - `.gitignore`: Archivos ignorados por Git.
 
-Frecuencia recomendada: Trimestral o mensual.
+Frecuencia recomendada: Semanal (automática) o Trimestral (manual).
 
 ## Dependencies
 
@@ -42,13 +44,39 @@ Crea un archivo `.env` en la raíz con variables de entorno requeridas (credenci
 
 ## Usage
 
-Ejecuta el script principal con trimestre (I, II, III, IV) y año (YYYY):
+El script principal puede ejecutarse en dos modos:
+
+### 1. Reporte Semanal (sin parámetros)
+
+Para generar un reporte de las alertas de deforestación de la semana anterior:
+
+```bash
+python main.py
+```
+
+Este comando generará automáticamente un reporte con las alertas desde el lunes hasta el domingo de la semana anterior a la fecha actual.
+
+### 2. Reporte Trimestral (con parámetros)
+
+Ejecuta el script con trimestre (I, II, III, IV) y año (YYYY):
 
 ```bash
 python main.py --trimestre I --anio 2024
 ```
 
-Esto descarga alertas GFW, las procesa, genera mapas y reportes, y sube resultados a Google Cloud Storage.
+**Ejemplos:**
+```bash
+# Reporte del primer trimestre de 2024
+python main.py --trimestre I --anio 2024
+
+# Reporte del cuarto trimestre de 2023
+python main.py --trimestre IV --anio 2023
+
+# Reporte semanal automático
+python main.py
+```
+
+Ambos modos descargan alertas GFW, las procesan, generan mapas y reportes, y suben los resultados a Google Cloud Storage.
 
 ## Colaboradores
 

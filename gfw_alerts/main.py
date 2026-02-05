@@ -4,6 +4,8 @@ import os
 from pathlib import Path
 import dotenv
 import warnings
+import pandas as pd
+import geopandas as gpd
 
 # Suppress urllib3 SSL warning
 warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+")
@@ -17,6 +19,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CRE
 from src.download_gfw_data import (
     get_api_key,
     get_start_end_dates,
+    get_weekly_dates,
     extract_polygon_from_file,
     download_alerts,
     save_to_csv,
@@ -90,16 +93,40 @@ FOOTER_IMG_PATH = os.path.join(INPUTS_PATH, "area_estudio", "secre_5.png")
 if __name__ == "__main__":
     # === Argumentos de ejecución ===
     parser = argparse.ArgumentParser(description="Pipeline de alertas GFW")
-    parser.add_argument("--trimestre", type=str, required=True, help="Trimestre: I, II, III o IV")
-    parser.add_argument("--anio", type=str, required=True, help="Año en formato YYYY")
+    parser.add_argument("--trimestre", type=str, required=False, help="Trimestre: I, II, III o IV (opcional, si se omite genera reporte semanal)")
+    parser.add_argument("--anio", type=str, required=False, help="Año en formato YYYY (opcional, requerido si se especifica trimestre)")
     args = parser.parse_args()
 
-    TRIMESTRE = args.trimestre
-    ANIO = args.anio
-    START_DATE, END_DATE = get_start_end_dates(TRIMESTRE, ANIO)
+    # Determinar si es reporte semanal o trimestral
+    if args.trimestre and args.anio:
+        # Modo trimestral
+        TRIMESTRE = args.trimestre
+        ANIO = args.anio
+        START_DATE, END_DATE = get_start_end_dates(TRIMESTRE, ANIO)
+        es_reporte_semanal = False
+        print(f"📅 Generando reporte TRIMESTRAL: {TRIMESTRE} trimestre {ANIO}")
+        print(f"   Rango de fechas: {START_DATE} a {END_DATE}")
+    elif args.trimestre or args.anio:
+        # Error: se especificó solo uno de los parámetros
+        print("Error: Debes especificar tanto --trimestre como --anio, o ninguno de los dos para reporte semanal.")
+        exit(1)
+    else:
+        # Modo semanal (sin parámetros)
+        START_DATE, END_DATE = get_weekly_dates()
+        TRIMESTRE = None
+        ANIO = None
+        es_reporte_semanal = True
+        print(f"📅 Generando reporte SEMANAL")
+        print(f"   Rango de fechas: {START_DATE} a {END_DATE}")
 
     # === Carpetas de salida (local para procesamiento) ===
-    fecha_rango = f"{TRIMESTRE}_trim_{ANIO}"
+    if es_reporte_semanal:
+        # Para reportes semanales, usar el rango de fechas
+        fecha_rango = f"semana_{START_DATE}_a_{END_DATE}"
+    else:
+        # Para reportes trimestrales, usar el formato anterior
+        fecha_rango = f"{TRIMESTRE}_trim_{ANIO}"
+    
     OUTPUT_FOLDER = os.path.join("temp_data", fecha_rango)
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     SENTINEL_IMAGES_PATH = os.path.join(OUTPUT_FOLDER, "sentinel_imagenes")
@@ -155,35 +182,48 @@ if __name__ == "__main__":
 
     print("🔍 Enriqueciendo alertas con información territorial...")
     alerts_gdf = process_alerts(GEOJSON_OUTPUT_PATH, VEREDAS_PATH, SECCIONES_PATH)
-    alerts_with_clusters = cluster_alerts_by_section(alerts_gdf)
+    
+    # Check if there are any 'highest' confidence alerts
+    if alerts_gdf.empty:
+        print("⚠️  No se encontraron alertas de confianza 'highest' en el período seleccionado.")
+        print("    El reporte se generará solo con estadísticas generales (sin clusters ni mapas Sentinel).")
+        # Create empty structures for consistency
+        alerts_with_clusters = alerts_gdf.copy()
+        alerts_with_clusters['cluster_id'] = pd.Series(dtype='int64')
+        clusters_bboxes = gpd.GeoDataFrame(columns=['cluster_id', 'geometry'], crs='EPSG:4326')
+        sentinel_results = []
+    else:
+        alerts_with_clusters = cluster_alerts_by_section(alerts_gdf)
+        clusters_bboxes = get_cluster_bboxes(alerts_with_clusters)
+
+        # === Crear mapas Sentinel interactivos ===
+        print("🛰️ Generando mapas Sentinel-2 interactivos...")
+        sentinel_results = []
+        for _, row in clusters_bboxes.iterrows():
+            cluster_id = int(row["cluster_id"])
+            output_path = os.path.join(SENTINEL_IMAGES_PATH, f"sentinel_cluster_{cluster_id}.html")
+
+            map_path = plot_sentinel_cluster_interactive(
+                cluster_geom=row.geometry,
+                cluster_id=cluster_id,
+                start_date=START_DATE,
+                end_date=END_DATE,
+                output_path=output_path, 
+                alerts_gdf=gdf_alertas,
+                project=GOOGLE_CLOUD_PROJECT
+            )
+
+            if map_path and os.path.exists(output_path):
+                print(f"✅ Mapa generado para cluster {cluster_id}: {output_path}")
+                sentinel_results.append({
+                    "cluster_id": cluster_id,
+                    "map_html": map_path
+                })
+            else:
+                print(f"❌ Mapa NO generado para cluster {cluster_id}: {output_path} (map_path: {map_path})")
+    
+    # Save analysis file (may be empty)
     alerts_with_clusters.to_file(DF_ANALYSIS_PATH)
-    clusters_bboxes = get_cluster_bboxes(alerts_with_clusters)
-
-    # === Crear mapas Sentinel interactivos ===
-    print("🛰️ Generando mapas Sentinel-2 interactivos...")
-    sentinel_results = []
-    for _, row in clusters_bboxes.iterrows():
-        cluster_id = int(row["cluster_id"])
-        output_path = os.path.join(SENTINEL_IMAGES_PATH, f"sentinel_cluster_{cluster_id}.html")
-
-        map_path = plot_sentinel_cluster_interactive(
-            cluster_geom=row.geometry,
-            cluster_id=cluster_id,
-            start_date=START_DATE,
-            end_date=END_DATE,
-            output_path=output_path, 
-            alerts_gdf=gdf_alertas,
-            project=GOOGLE_CLOUD_PROJECT
-        )
-
-        if map_path and os.path.exists(output_path):
-            print(f"✅ Mapa generado para cluster {cluster_id}: {output_path}")
-            sentinel_results.append({
-                "cluster_id": cluster_id,
-                "map_html": map_path
-            })
-        else:
-            print(f"❌ Mapa NO generado para cluster {cluster_id}: {output_path} (map_path: {map_path})")
 
     # === Crear mapa general de alertas ===
     print("🗺️ Creando visualización general...")
@@ -201,7 +241,10 @@ if __name__ == "__main__":
         ruta_footer_img=local_footer,
         ruta_mapa_alertas=MAP_OUTPUT_PATH,
         output_path=JSON_FINAL_PATH,
-        sentinel_results=sentinel_results
+        sentinel_results=sentinel_results,
+        start_date=START_DATE if es_reporte_semanal else None,
+        end_date=END_DATE if es_reporte_semanal else None,
+        es_semanal=es_reporte_semanal
     )
 
     # === Renderizar reporte HTML ===

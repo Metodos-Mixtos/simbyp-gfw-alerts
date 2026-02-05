@@ -6,6 +6,7 @@ import pandas as pd
 from shapely.geometry import box
 import matplotlib.pyplot as plt
 import contextily as ctx
+from datetime import datetime, timedelta
 
 
 ALERT_COLUMNS = [
@@ -14,6 +15,19 @@ ALERT_COLUMNS = [
     "umd_glad_sentinel2_alerts__confidence",
     "wur_radd_alerts__confidence"
 ]
+
+def get_weekly_dates():
+    """Devuelve start_date y end_date para la semana anterior a la fecha actual"""
+    today = datetime.now()
+    # Calcular el domingo más reciente (fin de semana pasada)
+    days_since_sunday = (today.weekday() + 1) % 7  # lunes=0, domingo=6
+    last_sunday = today - timedelta(days=days_since_sunday if days_since_sunday > 0 else 7)
+    # Calcular el lunes de esa semana (inicio de semana pasada)
+    last_monday = last_sunday - timedelta(days=6)
+    
+    start_date = last_monday.strftime("%Y-%m-%d")
+    end_date = last_sunday.strftime("%Y-%m-%d")
+    return start_date, end_date
 
 def get_start_end_dates(trimestre: str, anio: str):
     """Devuelve start_date y end_date a partir del trimestre (I–IV) y el año"""
