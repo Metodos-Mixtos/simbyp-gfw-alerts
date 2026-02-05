@@ -3,6 +3,9 @@ temp_data/
 .env
 __pycache__/
 .venv/
+service-account-*.json
+*.json
+keys/
 
 #Empezar a usar templates
 #https://github.com/github/gitignore/blob/main/Python.gitignore
