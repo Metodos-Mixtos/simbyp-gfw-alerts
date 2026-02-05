@@ -51,6 +51,12 @@ def cluster_alerts_by_section(alerts_gdf: gpd.GeoDataFrame, buffer_m=1000) -> gp
     y pertenecen a la misma sección rural (SECR_CCNCT).
     Devuelve los puntos originales con un cluster_id asignado.
     """
+    # Handle empty GeoDataFrame
+    if alerts_gdf.empty:
+        # Return empty GeoDataFrame with cluster_id column
+        alerts_gdf['cluster_id'] = pd.Series(dtype='int64')
+        return alerts_gdf
+    
     utm_crs = alerts_gdf.estimate_utm_crs()
     alerts_proj = alerts_gdf.to_crs(utm_crs).copy()
 
@@ -79,6 +85,10 @@ def get_cluster_bboxes(alerts_clusters_gdf, buffer_m=2000):
     """
     Genera un GeoDataFrame con un bbox (cuadrado) por cluster_id.
     """
+    # Handle empty GeoDataFrame
+    if alerts_clusters_gdf.empty:
+        return gpd.GeoDataFrame(columns=['cluster_id', 'geometry'], crs='EPSG:4326')
+    
     utm_crs = alerts_clusters_gdf.estimate_utm_crs()
     alerts_proj = alerts_clusters_gdf.to_crs(utm_crs)
 

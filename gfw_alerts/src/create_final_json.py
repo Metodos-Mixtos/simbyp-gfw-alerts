@@ -2,6 +2,7 @@ import json
 import os
 import locale
 from google.cloud import storage
+from datetime import datetime
 
 def make_relative(path, base):
     if path and os.path.isabs(path):
@@ -10,6 +11,16 @@ def make_relative(path, base):
 
 # Establecer formato numérico español
 locale.setlocale(locale.LC_ALL, "es_ES.UTF-8")
+
+def format_date_spanish(date_str):
+    """Convierte fecha YYYY-MM-DD a formato DD/MM/YYYY"""
+    if not date_str:
+        return ""
+    try:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        return date_obj.strftime("%d/%m/%Y")
+    except:
+        return date_str
 
 def build_report_json(
     summary,
@@ -21,12 +32,20 @@ def build_report_json(
     ruta_footer_img,
     ruta_mapa_alertas,
     output_path,
-    sentinel_results=None
+    sentinel_results=None,
+    start_date=None,
+    end_date=None,
+    es_semanal=False
 ):
     """
     Construye un JSON consolidado con alertas, clusters y mapas enriquecidos.
     Formatea los valores numéricos con coma decimal y punto de miles (estilo español),
     elimina el doble %, y omite valores vacíos (None).
+    
+    Parámetros adicionales para reportes semanales:
+    - start_date: fecha de inicio del reporte semanal (formato YYYY-MM-DD)
+    - end_date: fecha de fin del reporte semanal (formato YYYY-MM-DD)
+    - es_semanal: True si es reporte semanal, False si es trimestral
     """
     base_folder = os.path.dirname(output_path)
 
@@ -49,9 +68,32 @@ def build_report_json(
             return None
 
     # === Base del reporte ===
+    # Preparar textos según el tipo de reporte
+    if es_semanal:
+        fecha_inicio_fmt = format_date_spanish(start_date)
+        fecha_fin_fmt = format_date_spanish(end_date)
+        titulo_reporte = "Reporte semanal de alertas de deforestación y cambios en el páramo"
+        periodo_texto = f"Semana del {fecha_inicio_fmt} al {fecha_fin_fmt}"
+        titulo_mapa = f"Alertas de deforestación - Semana del {fecha_inicio_fmt} al {fecha_fin_fmt}"
+    else:
+        titulo_reporte = "Reporte trimestral de alertas de deforestación y cambios en el páramo"
+        periodo_texto = f"{trimestre} trimestre de {anio}"
+        titulo_mapa = f"Alertas de deforestación en el {trimestre} trimestre de {anio}"
+    
+    # Determinar si hay alertas de muy alto nivel
+    hay_alertas_muy_alto = summary["gfw_integrated_alerts__confidence"].get("highest", 0) > 0
+    seccion_muy_alto_titulo = "<h3>Alertas de nivel muy alto</h3>" if hay_alertas_muy_alto else ""
+    
     report_data = {
-        "TRIMESTRE": trimestre,
-        "ANIO": anio,
+        "TRIMESTRE": trimestre if not es_semanal else None,
+        "ANIO": anio if not es_semanal else None,
+        "ES_SEMANAL": es_semanal,
+        "FECHA_INICIO": start_date if es_semanal else None,
+        "FECHA_FIN": end_date if es_semanal else None,
+        "TITULO_REPORTE": titulo_reporte,
+        "PERIODO_TEXTO": periodo_texto,
+        "TITULO_MAPA": titulo_mapa,
+        "SECCION_MUY_ALTO_TITULO": seccion_muy_alto_titulo,
         "HEADER_IMG1": os.path.relpath(ruta_header_img1, base_folder),
         "HEADER_IMG2": os.path.relpath(ruta_header_img2, base_folder),
         "FOOTER_IMG": os.path.relpath(ruta_footer_img, base_folder),
