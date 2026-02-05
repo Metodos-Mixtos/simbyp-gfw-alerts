@@ -12,8 +12,10 @@ warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.
 
 dotenv.load_dotenv()
 
-# Authenticate with Google Cloud
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+# Only set GOOGLE_APPLICATION_CREDENTIALS if it exists (local dev only)
+# In Cloud Run, authentication happens automatically via the service account
+if os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
 
 # === Importar funciones del pipeline ===
 from src.download_gfw_data import (

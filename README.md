@@ -3,6 +3,7 @@
 Este repositorio contiene herramientas para el análisis y monitoreo de alertas de deforestación en Bogotá, integrando la API de Global Forest Watch (GFW) para descargar y procesar alertas integradas de deforestación.
 
 ## Estructura del Repositorio
+
 - `main.py`: Script principal para ejecutar el pipeline completo de alertas GFW.
   - Modo semanal: sin argumentos, genera reporte de la semana anterior
   - Modo trimestral: con `--trimestre` y `--anio`, genera reporte trimestral
@@ -65,6 +66,7 @@ python main.py --trimestre I --anio 2024
 ```
 
 **Ejemplos:**
+
 ```bash
 # Reporte del primer trimestre de 2024
 python main.py --trimestre I --anio 2024
@@ -77,6 +79,154 @@ python main.py
 ```
 
 Ambos modos descargan alertas GFW, las procesan, generan mapas y reportes, y suben los resultados a Google Cloud Storage.
+
+## Google Cloud Run
+
+Esta aplicación está configurada para ejecutarse automáticamente en Google Cloud Platform como un Cloud Run Job programado.
+
+### Arquitectura
+
+- **Cloud Run Job**: Ejecuta el pipeline de alertas en un contenedor Docker
+- **Cloud Scheduler**: Programa la ejecución automática cada lunes a las 8:00 AM (hora de Bogotá)
+- **Secret Manager**: Almacena credenciales de forma segura (usuario GFW, contraseña, API keys, etc.)
+- **Cloud Storage**: Almacena reportes generados en `gs://reportes-simbyp/reportes_gfw/`
+- **Service Account**: `sa-bosques-app@bosques-bogota-416214.iam.gserviceaccount.com` con permisos para GCS y Secret Manager
+
+### Deployment
+
+#### Prerequisitos
+
+- Acceso al proyecto GCP: `bosques-bogota-416214`
+- gcloud CLI instalado y autenticado
+- Service account con permisos adecuados
+- Credenciales GFW (usuario, contraseña, alias, email, organización)
+
+#### Paso 1: Habilitar APIs Requeridas
+
+```bash
+gcloud config set project bosques-bogota-416214
+gcloud services enable secretmanager.googleapis.com
+gcloud services enable run.googleapis.com
+gcloud services enable cloudbuild.googleapis.com
+gcloud services enable cloudscheduler.googleapis.com
+```
+
+#### Paso 2: Crear Secrets en Secret Manager
+
+```bash
+echo -n 'YOUR_GFW_USERNAME' | gcloud secrets create GFW_USERNAME --data-file=-
+echo -n 'YOUR_GFW_PASSWORD' | gcloud secrets create GFW_PASSWORD --data-file=-
+echo -n 'YOUR_API_ALIAS' | gcloud secrets create ALIAS --data-file=-
+echo -n 'YOUR_EMAIL' | gcloud secrets create EMAIL --data-file=-
+echo -n 'YOUR_ORG' | gcloud secrets create ORG --data-file=-
+```
+
+**Nota**: Reemplaza `YOUR_*` con los valores reales de las credenciales GFW. Estas credenciales se almacenan de forma segura y encriptada en Secret Manager.
+
+#### Paso 3: Otorgar Acceso a Service Account
+
+```bash
+for secret in GFW_USERNAME GFW_PASSWORD ALIAS EMAIL ORG; do
+  gcloud secrets add-iam-policy-binding $secret \
+    --member serviceAccount:sa-bosques-app@bosques-bogota-416214.iam.gserviceaccount.com \
+    --role roles/secretmanager.secretAccessor
+done
+```
+
+#### Paso 4: Construir y Desplegar Container
+
+```bash
+# Construir imagen Docker
+gcloud builds submit --tag gcr.io/bosques-bogota-416214/gfw-weekly-alerts
+
+# Crear Cloud Run Job
+gcloud run jobs create gfw-weekly-alerts \
+  --image gcr.io/bosques-bogota-416214/gfw-weekly-alerts \
+  --region us-central1 \
+  --memory 2Gi \
+  --cpu 1 \
+  --max-retries 2 \
+  --task-timeout 30m \
+  --service-account sa-bosques-app@bosques-bogota-416214.iam.gserviceaccount.com \
+  --set-secrets GFW_USERNAME=GFW_USERNAME:latest,GFW_PASSWORD=GFW_PASSWORD:latest,ALIAS=ALIAS:latest,EMAIL=EMAIL:latest,ORG=ORG:latest \
+  --set-env-vars OUTPUTS_BASE_PATH=gs://reportes-simbyp,GCP_PROJECT=bosques-bogota-416214,INPUTS_PATH=gs://material-estatico-sdp/SIMBYP_DATA
+```
+
+#### Paso 5: Configurar Permisos de Invocación
+
+```bash
+gcloud run jobs add-iam-policy-binding gfw-weekly-alerts \
+  --region us-central1 \
+  --member serviceAccount:sa-bosques-app@bosques-bogota-416214.iam.gserviceaccount.com \
+  --role roles/run.invoker
+```
+
+#### Paso 6: Crear Programación Automática
+
+```bash
+# Ejecuta cada lunes a las 8:00 AM (hora de Bogotá)
+gcloud scheduler jobs create http gfw-weekly-alerts-trigger \
+  --location us-central1 \
+  --schedule "0 8 * * 1" \
+  --time-zone "America/Bogota" \
+  --uri "https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/bosques-bogota-416214/jobs/gfw-weekly-alerts:run" \
+  --http-method POST \
+  --oauth-service-account-email sa-bosques-app@bosques-bogota-416214.iam.gserviceaccount.com
+```
+
+### Monitoreo y Pruebas
+
+#### Ejecutar Manualmente
+
+```bash
+gcloud run jobs execute gfw-weekly-alerts --region us-central1
+```
+
+#### Ver Logs
+
+```bash
+gcloud logging read "resource.type=cloud_run_job AND resource.labels.job_name=gfw-weekly-alerts" --limit 50 --format=json
+```
+
+#### Verificar Reportes Generados
+
+```bash
+gsutil ls gs://reportes-simbyp/reportes_gfw/
+```
+
+### Actualizar el Job
+
+Si realizas cambios en el código:
+
+```bash
+# 1. Reconstruir imagen
+gcloud builds submit --tag gcr.io/bosques-bogota-416214/gfw-weekly-alerts
+
+# 2. Actualizar el job
+gcloud run jobs update gfw-weekly-alerts \
+  --image gcr.io/bosques-bogota-416214/gfw-weekly-alerts \
+  --region us-central1
+```
+
+### Programación
+
+- **Frecuencia**: Cada lunes a las 8:00 AM (hora de Bogotá)
+- **Formato Cron**: `0 8 * * 1`
+- **Zona horaria**: `America/Bogota` (UTC-5)
+
+### Costos
+
+Cloud Run Jobs solo cobra por tiempo de ejecución:
+
+- Aproximadamente 5 a 15 minutos por ejecución semanal
+- Costos estimados: < $5 USD/mes
+
+### Seguridad
+
+- **Credenciales**: Nunca incluyas credenciales en el código o el repositorio
+- **Secret Manager**: Todas las credenciales se almacenan encriptadas en Google Secret Manager
+- **Service Account**: El acceso a recursos GCP se controla mediante service account con permisos mínimos necesarios
+- **.env local**: Solo para desarrollo local, nunca debe ser committed a Git
 
 ## Colaboradores
 
