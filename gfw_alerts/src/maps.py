@@ -228,19 +228,21 @@ def plot_sentinel_cluster_interactive(
 ):
     """
     Genera un mapa interactivo con:
-    - Imagen Sentinel-2 RGB (Earth Engine) - SOLO si hay imágenes con <30% nubes
+    - Imagen Sentinel-2 RGB (Earth Engine) guardada como archivo PNG
     - Basemap CartoDB Positron (siempre visible)
     - Borde del cluster
     - Puntos de alertas (solo las de nivel 'highest')
     - Leyenda fija en pantalla
     - Advertencia si no hay imágenes con calidad óptima
     
-    Si hay imagen Sentinel, se incrusta en base64 (permanente, sin expiración).
-    Si NO hay imágenes con <30% nubes, solo muestra basemap con advertencia.
+    La imagen Sentinel se guarda como archivo PNG en el mismo directorio que el HTML.
+    Si no hay imágenes disponibles, solo muestra basemap con advertencia.
     """
 
     ee.Initialize(project=project)
     
+    import os
+    import re
     from google.cloud import storage
     import requests
     from PIL import Image
@@ -380,11 +382,7 @@ def plot_sentinel_cluster_interactive(
                 actual_resolution = None  # No se pudo descargar
                 cloud_warning = "Error al descargar la imagen satelital"
             else:
-                # Convertir imagen a base64 para embeber en HTML (PERMANENTE - sin expiración)
-                image_base64 = base64.b64encode(response.content).decode('utf-8')
-                
                 print(f"   📊 Tamaño de imagen descargada: {len(response.content)} bytes")
-                print(f"   📊 Tamaño de imagen base64: {len(image_base64)} caracteres")
                 
                 # Validar que la imagen no esté vacía o corrupta (mínimo 50KB)
                 if len(response.content) < 50000:
@@ -393,9 +391,17 @@ def plot_sentinel_cluster_interactive(
                     actual_resolution = None
                     cloud_warning = f"Sin imagen Sentinel-2 útil ({actual_cloud_percent:.1f}% nubes)"
                 else:
-                    permanent_image_url = f"data:image/png;base64,{image_base64}"
-                    print(f"   ✅ Imagen embedida en HTML (permanente, sin expiración)")
-                    # No guardamos respaldo separado - la imagen ya está embebida
+                    # Guardar imagen como archivo PNG
+                    png_filename = f"sentinel_cluster_{cluster_id}.png"
+                    png_path = os.path.join(os.path.dirname(output_path), png_filename)
+                    
+                    with open(png_path, 'wb') as f:
+                        f.write(response.content)
+                    
+                    # Usar ruta absoluta para Folium (la convertirá a base64 automáticamente)
+                    permanent_image_url = png_path
+                    print(f"   ✅ Imagen guardada como PNG: {png_path}")
+                    print(f"   📄 Folium convertirá a base64 automáticamente")
         except Exception as e:
             print(f"   ❌ Error generando imagen: {str(e)}")
             import traceback
@@ -554,6 +560,28 @@ def plot_sentinel_cluster_interactive(
     try:
         m.save(output_path)
         print(f"✅ Mapa interactivo del cluster {cluster_id} guardado en: {output_path}")
+        
+        # Si hay PNG guardado, modificar el HTML para usar ruta relativa en lugar de base64
+        if permanent_image_url and os.path.exists(permanent_image_url):
+            png_filename = os.path.basename(permanent_image_url)
+            
+            # Leer el HTML generado
+            with open(output_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            
+            # Buscar y reemplazar data URL por ruta relativa
+            # Folium convierte la imagen a base64, necesitamos revertir eso
+            # Buscar el patrón de ImageOverlay con data:image/png;base64
+            pattern = r'(var img_\w+ = L\.imageOverlay\(\s*)"data:image/png;base64,[^"]*"'
+            replacement = rf'\1"{png_filename}"'
+            html_content_modified = re.sub(pattern, replacement, html_content)
+            
+            # Guardar HTML modificado
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(html_content_modified)
+            
+            print(f"   ✅ HTML modificado para usar PNG externo: {png_filename}")
+        
         return output_path
     except Exception as e:
         print(f"❌ Error generando mapa para cluster {cluster_id}: {e}")
