@@ -1,10 +1,46 @@
 #!/usr/bin/env python3
-import json, re
+import json, re, base64
 from pathlib import Path
 from google.cloud import storage
 
 SECTION_PAT = re.compile(r"{{#(\w+)}}(.*?){{/\1}}", re.DOTALL)
 TOKEN_PAT   = re.compile(r"{{\s*([\w\.]+)\s*}}")
+
+def gcs_image_to_base64(gcs_path):
+    """
+    Convierte una imagen en GCS a data URL base64 para incrustar en HTML.
+    Si no es ruta GCS, devuelve la ruta original.
+    """
+    if not isinstance(gcs_path, str) or not gcs_path.startswith("gs://"):
+        return gcs_path
+    
+    try:
+        _, rest = gcs_path.split("gs://", 1)
+        bucket_name, blob_path = rest.split("/", 1)
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_path)
+        
+        # Descargar imagen
+        image_bytes = blob.download_as_bytes()
+        
+        # Determinar MIME type por extensión
+        ext = blob_path.lower().split('.')[-1]
+        mime_types = {
+            'png': 'image/png',
+            'jpg': 'image/jpeg',
+            'jpeg': 'image/jpeg',
+            'gif': 'image/gif',
+            'svg': 'image/svg+xml'
+        }
+        mime_type = mime_types.get(ext, 'image/png')
+        
+        # Convertir a base64
+        b64 = base64.b64encode(image_bytes).decode('utf-8')
+        return f"data:{mime_type};base64,{b64}"
+    except Exception as e:
+        print(f"⚠️ Error convirtiendo {gcs_path} a base64: {e}")
+        return gcs_path  # Devolver ruta original en caso de error
 
 def build_very_high_sections(sections):
     blocks = []
@@ -64,6 +100,18 @@ def _write_text(path, content):
 def render(template_path: Path, data_path: Path, out_path: Path):
     template = _read_text(template_path)
     data = json.loads(_read_text(data_path))
+
+    # Convertir rutas GCS de imágenes a base64 para incrustar en HTML
+    print("🖼️  Procesando imágenes...")
+    if data.get("HEADER_IMG1"):
+        data["HEADER_IMG1"] = gcs_image_to_base64(data["HEADER_IMG1"])
+        print(f"   ✅ Header 1 procesado")
+    if data.get("HEADER_IMG2"):
+        data["HEADER_IMG2"] = gcs_image_to_base64(data["HEADER_IMG2"])
+        print(f"   ✅ Header 2 procesado")
+    if data.get("FOOTER_IMG"):
+        data["FOOTER_IMG"] = gcs_image_to_base64(data["FOOTER_IMG"])
+        print(f"   ✅ Footer procesado")
 
     # Convierte el dict HEADER a HTML antes de renderizar
     data["HEADER"] = build_header(data.get("HEADER"))

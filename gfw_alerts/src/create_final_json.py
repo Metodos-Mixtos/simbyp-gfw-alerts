@@ -5,9 +5,34 @@ from google.cloud import storage
 from datetime import datetime
 
 def make_relative(path, base):
-    if path and os.path.isabs(path):
-        return os.path.relpath(path, base)
-    return path
+    """
+    Convierte una ruta a relativa respecto a base.
+    Si la ruta es GCS (gs://...), la devuelve tal cual.
+    Normaliza rutas para asegurar que sean relativas a la carpeta base.
+    SIEMPRE usa forward slashes (/) para compatibilidad web.
+    """
+    if not path:
+        return path
+    if isinstance(path, str) and path.startswith("gs://"):
+        return path  # Rutas GCS se mantienen absolutas
+    
+    # Normalizar ambas rutas (convertir \ a / y resolver ..)
+    path_norm = os.path.normpath(path).replace("\\", "/")
+    base_norm = os.path.normpath(base).replace("\\", "/")
+    
+    # Si la ruta está dentro de base, calcular ruta relativa
+    if path_norm.startswith(base_norm):
+        # Remover el prefijo de base y el separador
+        relative = path_norm[len(base_norm):].lstrip("/")
+        return relative
+    
+    # Si no está dentro de base, usar relpath y normalizar
+    if os.path.isabs(path):
+        result = os.path.relpath(path, base).replace("\\", "/")
+        return result
+    
+    # Para rutas ya relativas, solo normalizar separadores
+    return path.replace("\\", "/")
 
 # Establecer formato numérico español
 locale.setlocale(locale.LC_ALL, "es_ES.UTF-8")
@@ -94,10 +119,10 @@ def build_report_json(
         "PERIODO_TEXTO": periodo_texto,
         "TITULO_MAPA": titulo_mapa,
         "SECCION_MUY_ALTO_TITULO": seccion_muy_alto_titulo,
-        "HEADER_IMG1": os.path.relpath(ruta_header_img1, base_folder),
-        "HEADER_IMG2": os.path.relpath(ruta_header_img2, base_folder),
-        "FOOTER_IMG": os.path.relpath(ruta_footer_img, base_folder),
-        "MAPA_ALERTAS": os.path.relpath(ruta_mapa_alertas, base_folder),
+        "HEADER_IMG1": make_relative(ruta_header_img1, base_folder),
+        "HEADER_IMG2": make_relative(ruta_header_img2, base_folder),
+        "FOOTER_IMG": make_relative(ruta_footer_img, base_folder),
+        "MAPA_ALERTAS": make_relative(ruta_mapa_alertas, base_folder),
         # GFW
         "GFW_NOMINAL": summary["gfw_integrated_alerts__confidence"].get("nominal", 0),
         "GFW_ALTO": summary["gfw_integrated_alerts__confidence"].get("high", 0),
@@ -166,7 +191,7 @@ def build_report_json(
 
         map_path = map_lookup.get(cid)
         if map_path:
-            cluster_info["mapa_sentinel"] = os.path.relpath(map_path, base_folder)
+            cluster_info["mapa_sentinel"] = make_relative(map_path, base_folder)
 
         report_data["SECCIONES_MUY_ALTO"].append(cluster_info)
 
