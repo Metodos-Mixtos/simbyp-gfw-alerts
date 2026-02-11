@@ -48,9 +48,6 @@ def create_cluster_maps(clusters_gdf, alerts_gdf, sentinel_images_dir, output_di
         cluster_points = alerts_gdf[alerts_gdf["cluster_id"] == cluster["cluster_id"]]
         cluster_points.plot(ax=ax, color="red", markersize=30, label="Alerta")
         
-        # Barra de escala
-        scalebar = ScaleBar(dx=res, units="m", dimension="si-length", location="lower left", scale_loc="bottom", length_fraction=0.25) 
-        ax.add_artist(scalebar)
 
         # Leyenda y flecha norte
         ax.legend(loc="lower right")
@@ -183,35 +180,6 @@ def plot_alerts_interactive(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, o
         width=150,
         height=150
     ).add_to(m)
-    
-    # Añadir escala visual en esquina inferior derecha
-    scale_html_general = '''
-    <div style="position: fixed; 
-                bottom: 20px; 
-                right: 20px; 
-                background: rgba(255, 255, 255, 0.95); 
-                border: 2px solid #333; 
-                border-radius: 5px;
-                z-index: 9999; 
-                font-family: Arial, sans-serif;
-                padding: 10px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-        <div style="font-weight: bold; margin-bottom: 5px; font-size: 13px;">ESCALA</div>
-        <div style="display: flex; border-bottom: 3px solid black; width: 100px; margin-bottom: 3px;">
-            <div style="width: 50%; border-right: 1px solid black; height: 8px; background: white;"></div>
-            <div style="width: 50%; height: 8px; background: black;"></div>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; width: 100px;">
-            <span>0m</span>
-            <span>50m</span>
-            <span>100m</span>
-        </div>
-        <div style="margin-top: 8px; font-size: 9px; color: #999;">
-            Mapa general de alertas
-        </div>
-    </div>
-    '''
-    m.get_root().html.add_child(folium.Element(scale_html_general))
 
     # Guardar el mapa
     m.save(output_path)
@@ -428,54 +396,6 @@ def plot_sentinel_cluster_interactive(
         width=150,
         height=150
     ).add_to(m)
-    
-    # Añadir escala visual con resolución real calculada en esquina inferior derecha
-    if actual_resolution:
-        resolution_text = f"Resolución: ~{actual_resolution:.1f}m/píxel"
-        if cloud_warning:
-            # Imagen con nubes pero disponible
-            scale_info = f"⚠️ {cloud_warning}"
-        else:
-            # Imagen con calidad óptima
-            if actual_cloud_percent is not None:
-                scale_info = f"Cobertura de nubes: {actual_cloud_percent:.1f}%"
-            else:
-                scale_info = f"Calidad óptima (<{cloudy}% nubes)"
-    else:
-        resolution_text = "⚠️ Sin imagen Sentinel-2"
-        if cloud_warning:
-            scale_info = cloud_warning
-        else:
-            scale_info = "No hay datos satelitales disponibles"
-    
-    scale_html = f'''
-    <div style="position: fixed; 
-                bottom: 20px; 
-                right: 20px; 
-                background: rgba(255, 255, 255, 0.95); 
-                border: 2px solid #333; 
-                border-radius: 5px;
-                z-index: 9999; 
-                font-family: Arial, sans-serif;
-                padding: 10px;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
-        <div style="font-weight: bold; margin-bottom: 5px; font-size: 13px;">ESCALA</div>
-        <div style="display: flex; border-bottom: 3px solid black; width: 100px; margin-bottom: 3px;">
-            <div style="width: 50%; border-right: 1px solid black; height: 8px; background: white;"></div>
-            <div style="width: 50%; height: 8px; background: black;"></div>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 11px; width: 100px;">
-            <span>0m</span>
-            <span>50m</span>
-            <span>100m</span>
-        </div>
-        <div style="margin-top: 8px; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 5px;">
-            {resolution_text}<br>
-            <span style="font-size: 9px; color: {'#d9534f' if cloud_warning else '#999'};">{scale_info}</span>
-        </div>
-    </div>
-    '''
-    m.get_root().html.add_child(folium.Element(scale_html))
 
     # === Capa Sentinel-2 como ImageOverlay permanente (si existe) ===
     if permanent_image_url:
