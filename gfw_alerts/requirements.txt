@@ -1,8 +1,8 @@
-json
-dotenv
-os
+python-dotenv
 requests
-typing
+urllib3<2
+google-auth<2.0
+google-cloud-storage<2.0
 geopandas 
 pandas
 shapely
@@ -12,3 +12,5 @@ ee
 geemap
 matplotlib-scalebar
 gcsfs
+scikit-learn
+tenacity
