@@ -6,6 +6,7 @@ import dotenv
 import warnings
 import pandas as pd
 import geopandas as gpd
+from google.cloud import storage
 
 # Suppress urllib3 SSL warning
 warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+")
@@ -84,13 +85,13 @@ if missing_vars:
         print(f" - {var}")
     exit(1)
 
-# === Rutas de insumos ===
-POLYGON_PATH = os.path.join(INPUTS_PATH, "area_estudio", "gfw", "area_estudio.geojson")
-VEREDAS_PATH = os.path.join(INPUTS_PATH, "area_estudio", "gfw", "veredas_cund_2024/veredas_cund_2024.shp")
-SECCIONES_PATH = os.path.join(INPUTS_PATH, "area_estudio", "gfw", "panel_secciones_rurales", "V3/panel_SDP_29092025-v3.shp")
-HEADER_IMG1_PATH = os.path.join(INPUTS_PATH, "area_estudio", "asi_4.png")
-HEADER_IMG2_PATH = os.path.join(INPUTS_PATH, "area_estudio", "bogota_4.png")
-FOOTER_IMG_PATH = os.path.join(INPUTS_PATH, "area_estudio", "secre_5.png")
+# === Rutas de insumos (GCS paths - always use forward slashes) ===
+POLYGON_PATH = f"{INPUTS_PATH}/area_estudio/gfw/area_estudio.geojson"
+VEREDAS_PATH = f"{INPUTS_PATH}/area_estudio/gfw/veredas_cund_2024/veredas_cund_2024.shp"
+SECCIONES_PATH = f"{INPUTS_PATH}/area_estudio/gfw/panel_secciones_rurales/V3/panel_SDP_29092025-v3.shp"
+HEADER_IMG1_PATH = f"{INPUTS_PATH}/SDP Logos/asi_4.png"
+HEADER_IMG2_PATH = f"{INPUTS_PATH}/SDP Logos/bogota_4.png"
+FOOTER_IMG_PATH = f"{INPUTS_PATH}/SDP Logos/secre_5.png"
 
 if __name__ == "__main__":
     # === Argumentos de ejecución ===
@@ -134,23 +135,14 @@ if __name__ == "__main__":
     SENTINEL_IMAGES_PATH = os.path.join(OUTPUT_FOLDER, "sentinel_imagenes")
     os.makedirs(SENTINEL_IMAGES_PATH, exist_ok=True)
 
-    # === Descargar imágenes de encabezado y pie de página desde GCS ===
-    from google.cloud import storage
-
-    def download_gcs_to_local(gcs_path, local_path):
-        _, rest = gcs_path.split("gs://", 1)
-        bucket_name, blob_path = rest.split("/", 1)
-        client = storage.Client()
-        bucket = client.bucket(bucket_name)
-        blob = bucket.blob(blob_path)
-        blob.download_to_filename(local_path)
-
-    local_header1 = os.path.join(OUTPUT_FOLDER, "asi_4.png")
-    download_gcs_to_local(HEADER_IMG1_PATH, local_header1)
-    local_header2 = os.path.join(OUTPUT_FOLDER, "bogota_4.png")
-    download_gcs_to_local(HEADER_IMG2_PATH, local_header2)
-    local_footer = os.path.join(OUTPUT_FOLDER, "secre_5.png")
-    download_gcs_to_local(FOOTER_IMG_PATH, local_footer)
+    # === Usar rutas GCS directas para logos (no descargar) ===
+    print("🖼️  Usando rutas GCS directas para logos")
+    local_header1 = HEADER_IMG1_PATH  # Ruta GCS directa
+    local_header2 = HEADER_IMG2_PATH  # Ruta GCS directa
+    local_footer = FOOTER_IMG_PATH    # Ruta GCS directa
+    print(f"   ✅ Header 1: {local_header1}")
+    print(f"   ✅ Header 2: {local_header2}")
+    print(f"   ✅ Footer: {local_footer}")
 
     # === Rutas de archivos (locales) ===
     CSV_OUTPUT_PATH = os.path.join(OUTPUT_FOLDER, f"alertas_gfw_{fecha_rango}.csv")
@@ -158,7 +150,8 @@ if __name__ == "__main__":
     DF_ANALYSIS_PATH = os.path.join(OUTPUT_FOLDER, f"alertas_gfw_analisis_{fecha_rango}.geojson")
     MAP_OUTPUT_PATH = os.path.join(OUTPUT_FOLDER, f"alertas_mapa_{fecha_rango}.html")
     JSON_FINAL_PATH = os.path.join(OUTPUT_FOLDER, "reporte_final.json")
-    TPL_PATH = Path("gfw_alerts/reporte/report_template.html")
+    # Ruta relativa al script actual (funciona desde gfw_alerts/ o desde raíz)
+    TPL_PATH = Path(__file__).parent / "reporte" / "report_template.html"
     OUT_PATH = Path(OUTPUT_FOLDER) / "reporte_final.html"
     DATA_PATH = Path(JSON_FINAL_PATH)
 

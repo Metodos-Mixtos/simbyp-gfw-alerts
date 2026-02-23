@@ -4,8 +4,11 @@ import matplotlib.pyplot as plt
 import os
 import rasterio
 import folium
+from folium import plugins
 import ee
 import json
+import requests
+import base64
 from matplotlib_scalebar.scalebar import ScaleBar
 
 def create_cluster_maps(clusters_gdf, alerts_gdf, sentinel_images_dir, output_dir):
@@ -45,9 +48,6 @@ def create_cluster_maps(clusters_gdf, alerts_gdf, sentinel_images_dir, output_di
         cluster_points = alerts_gdf[alerts_gdf["cluster_id"] == cluster["cluster_id"]]
         cluster_points.plot(ax=ax, color="red", markersize=30, label="Alerta")
         
-        # Barra de escala
-        scalebar = ScaleBar(dx=res, units="m", dimension="si-length", location="lower left", scale_loc="bottom", length_fraction=0.25) 
-        ax.add_artist(scalebar)
 
         # Leyenda y flecha norte
         ax.legend(loc="lower right")
@@ -109,31 +109,51 @@ def plot_alerts_interactive(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, o
     ).add_to(m)
 
     # Crear puntos de alertas con popups descriptivos
-    for _, row in alerts_gdf.iterrows():
-        conf = translate_conf.get(row.get("gfw_integrated_alerts__confidence"), "N/A")
-        glad_landsat = translate_conf.get(row.get("umd_glad_landsat_alerts__confidence"), "N/A")
-        glad_s2 = translate_conf.get(row.get("umd_glad_sentinel2_alerts__confidence"), "N/A")
-        radd = translate_conf.get(row.get("wur_radd_alerts__confidence"), "N/A")
+    # Primero dibujamos las alertas de menor prioridad, luego las "highest" para que queden encima
+    for priority in ["nominal", "high", "highest"]:
+        for _, row in alerts_gdf.iterrows():
+            conf_raw = row.get("gfw_integrated_alerts__confidence")
+            if conf_raw != priority:
+                continue
+                
+            conf = translate_conf.get(conf_raw, "N/A")
+            glad_landsat = translate_conf.get(row.get("umd_glad_landsat_alerts__confidence"), "N/A")
+            glad_s2 = translate_conf.get(row.get("umd_glad_sentinel2_alerts__confidence"), "N/A")
+            radd = translate_conf.get(row.get("wur_radd_alerts__confidence"), "N/A")
 
-        color = "red" if conf == "Muy alto" else "orange"
+            # Alertas "highest" más grandes y visibles
+            if conf == "Muy alto":
+                color = "red"
+                radius = 4
+                weight = 3
+                fill_opacity = 0.9
+                z_index = 1000  # Encima de todo
+            else:
+                color = "orange"
+                radius = 4
+                weight = 3
+                fill_opacity = 0.9
+                z_index = 1
 
-        popup_html = f"""
-        <b>Alerta</b><br>
-        📍 Lat: {row.geometry.y:.5f}, Lon: {row.geometry.x:.5f}<br>
-        GFW (Integrada): {conf}<br>
-        GLAD Landsat: {glad_landsat}<br>
-        GLAD Sentinel-2: {glad_s2}<br>
-        RADD: {radd}
-        """
+            popup_html = f"""
+            <b>Alerta</b><br>
+            📍 Lat: {row.geometry.y:.5f}, Lon: {row.geometry.x:.5f}<br>
+            GFW (Integrada): {conf}<br>
+            GLAD Landsat: {glad_landsat}<br>
+            GLAD Sentinel-2: {glad_s2}<br>
+            RADD: {radd}
+            """
 
-        folium.CircleMarker(
-            location=[row.geometry.y, row.geometry.x],
-            radius=4,
-            color=color,
-            fill=True,
-            fill_opacity=0.7,
-            popup=popup_html
-        ).add_to(m)
+            folium.CircleMarker(
+                location=[row.geometry.y, row.geometry.x],
+                radius=radius,
+                color=color,
+                weight=weight,
+                fill=True,
+                fill_opacity=fill_opacity,
+                popup=popup_html,
+                z_index_offset=z_index
+            ).add_to(m)
 
     # Leyenda HTML fija, pegada a la esquina
     legend_html = """
@@ -152,6 +172,14 @@ def plot_alerts_interactive(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, o
     </div>
     """
     m.get_root().html.add_child(folium.Element(legend_html))
+    
+    # Añadir minimapa en esquina superior derecha
+    plugins.MiniMap(
+        toggle_display=True,
+        position='topright',
+        width=150,
+        height=150
+    ).add_to(m)
 
     # Guardar el mapa
     m.save(output_path)
@@ -168,52 +196,220 @@ def plot_sentinel_cluster_interactive(
 ):
     """
     Genera un mapa interactivo con:
-    - Imagen Sentinel-2 RGB (Earth Engine)
-    - Basemap CartoDB Positron
+    - Imagen Sentinel-2 RGB (Earth Engine) guardada como archivo PNG
+    - Basemap CartoDB Positron (siempre visible)
     - Borde del cluster
     - Puntos de alertas (solo las de nivel 'highest')
     - Leyenda fija en pantalla
+    - Advertencia si no hay imágenes con calidad óptima
+    
+    La imagen Sentinel se guarda como archivo PNG en el mismo directorio que el HTML.
+    Si no hay imágenes disponibles, solo muestra basemap con advertencia.
     """
 
     ee.Initialize(project=project)
+    
+    import os
+    import re
+    from google.cloud import storage
+    import requests
+    from PIL import Image
+    from io import BytesIO
+
+    # Inicializar variables
+    actual_resolution = None
+    permanent_image_url = None
+    cloud_warning = None
+    actual_cloud_percent = None
 
     # === Convertir geometría del cluster a EE ===
     geom = ee.Geometry.Polygon(cluster_geom.exterior.coords[:])
     vis_params = {"min": 0, "max": 3000, "bands": ["B4", "B3", "B2"], "gamma": 1.1}
 
-    # === Crear colección Sentinel-2 filtrada ===
+    # === Crear colección Sentinel-2 filtrada (solo con calidad óptima) ===
+    print(f"   🔍 Buscando imágenes Sentinel-2 para cluster {cluster_id}...")
+    print(f"   📅 Rango: {start_date} a {end_date}")
+    print(f"   ☁️  Filtro: <{cloudy}% cobertura de nubes")
+    
     col = (
         ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
         .filterBounds(geom)
         .filterDate(start_date, end_date)
         .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", cloudy))
+        .sort("CLOUDY_PIXEL_PERCENTAGE")
         .select(["B4", "B3", "B2"])
     )
-
-    if col.size().getInfo() == 0:
-        print(f"⚠️ Cluster {cluster_id}: sin imágenes disponibles")
-        return None
-
-    img = col.median().clip(geom)
-    tile_url = img.getMapId(vis_params)["tile_fetcher"].url_format
+    
+    count_initial = col.size().getInfo()
+    print(f"   📊 Imágenes encontradas con <{cloudy}% nubes: {count_initial}")
+    
+    cloud_warning = None
+    has_images = False
+    
+    if count_initial == 0:
+        print(f"   ⚠️  No se encontraron imágenes con <{cloudy}% de nubes")
+        print(f"   ℹ️  Buscando imagen con menor cobertura de nubes disponible...")
+        
+        # Buscar TODAS las imágenes y ordenar por menor cobertura de nubes
+        col = (
+            ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+            .filterBounds(geom)
+            .filterDate(start_date, end_date)
+            .sort("CLOUDY_PIXEL_PERCENTAGE")
+            .select(["B4", "B3", "B2"])
+        )
+        count_all = col.size().getInfo()
+        print(f"   📊 Total de imágenes disponibles: {count_all}")
+        
+        if count_all == 0:
+            print(f"   ⚠️  No se encontraron imágenes Sentinel-2 en el período")
+            permanent_image_url = None
+            actual_resolution = None
+            cloud_warning = f"No hay imágenes Sentinel-2 disponibles en este período"
+            actual_cloud_percent = None
+            has_images = False
+        else:
+            # Obtener la imagen menos nubosa
+            first_img = ee.Image(col.first())
+            actual_cloud_percent = first_img.get("CLOUDY_PIXEL_PERCENTAGE").getInfo()
+            
+            # Usar la imagen individual (no median) cuando hay muchas nubes
+            img = first_img.clip(geom)
+            cloud_warning = f"Imagen con {actual_cloud_percent:.1f}% cobertura de nubes"
+            print(f"   ℹ️  Usando imagen menos nubosa disponible: {actual_cloud_percent:.1f}%")
+            has_images = True
+    else:
+        # Obtener la imagen menos nubosa
+        first_img = ee.Image(col.first())
+        actual_cloud_percent = first_img.get("CLOUDY_PIXEL_PERCENTAGE").getInfo()
+        
+        # Con buena calidad, usar median para mejor resultado
+        if count_initial >= 3:
+            img = col.median().clip(geom)
+            print(f"   ✅ Usando median de {count_initial} imágenes con {actual_cloud_percent:.1f}% nubes (mínimo)")
+        else:
+            img = first_img.clip(geom)
+            print(f"   ✅ Usando imagen individual con {actual_cloud_percent:.1f}% de nubes")
+        cloud_warning = None  # Imagen con buena calidad
+        has_images = True
+    
+    # === Generar imagen solo si hay colección disponible ===
+    if has_images:
+        try:
+            print(f"   ✅ Colección disponible, iniciando generación de imagen...")
+            # === Calcular dimensiones para VERDADERA resolución de 10m ===
+            bounds = cluster_geom.bounds  # (minx, miny, maxx, maxy)
+            
+            # Calcular dimensiones en metros (aproximado a latitud ~4.6°)
+            import math
+            lat_center = (bounds[1] + bounds[3]) / 2
+            
+            # 1 grado longitud ≈ 111km * cos(lat), 1 grado latitud ≈ 111km
+            width_degrees = bounds[2] - bounds[0]
+            height_degrees = bounds[3] - bounds[1]
+            
+            width_meters = width_degrees * 111000 * math.cos(math.radians(lat_center))
+            height_meters = height_degrees * 111000
+            
+            # Píxeles necesarios para resolución de 10m
+            width_pixels = int(width_meters / 10)
+            height_pixels = int(height_meters / 10)
+            
+            # Limitar a máximo 8192x8192 (límite de Earth Engine)
+            max_pixels = 8192
+            if width_pixels > max_pixels or height_pixels > max_pixels:
+                scale_factor = max(width_pixels / max_pixels, height_pixels / max_pixels)
+                width_pixels = int(width_pixels / scale_factor)
+                height_pixels = int(height_pixels / scale_factor)
+                actual_resolution = 10 * scale_factor
+            else:
+                actual_resolution = 10
+            
+            dimensions = f'{width_pixels}x{height_pixels}'
+            
+            print(f"   📐 Área: {width_meters:.0f}m x {height_meters:.0f}m")
+            print(f"   🖼️  Imagen: {width_pixels}x{height_pixels} píxeles")
+            print(f"   📏 Resolución efectiva: ~{actual_resolution:.1f}m/píxel")
+        
+            thumb_url = img.getThumbURL({
+                'dimensions': dimensions,
+                'region': geom,
+                'format': 'png',
+                **vis_params
+            })
+            
+            print(f"   📥 Descargando imagen Sentinel-2 para cluster {cluster_id}...")
+            
+            # Descargar imagen
+            response = requests.get(thumb_url)
+            print(f"   📡 Respuesta del servidor: status {response.status_code}")
+            if response.status_code != 200:
+                print(f"   ❌ Error descargando imagen: {response.status_code}")
+                permanent_image_url = None
+                image_base64 = None
+                actual_resolution = None  # No se pudo descargar
+                cloud_warning = "Error al descargar la imagen satelital"
+            else:
+                print(f"   📊 Tamaño de imagen descargada: {len(response.content)} bytes")
+                
+                # Validar que la imagen no esté vacía o corrupta (mínimo 50KB)
+                if len(response.content) < 50000:
+                    print(f"   ⚠️  Imagen demasiado pequeña ({len(response.content)} bytes), probablemente vacía")
+                    permanent_image_url = None
+                    actual_resolution = None
+                    cloud_warning = f"Sin imagen Sentinel-2 útil ({actual_cloud_percent:.1f}% nubes)"
+                else:
+                    # Guardar imagen como archivo PNG
+                    png_filename = f"sentinel_cluster_{cluster_id}.png"
+                    png_path = os.path.join(os.path.dirname(output_path), png_filename)
+                    
+                    with open(png_path, 'wb') as f:
+                        f.write(response.content)
+                    
+                    # Usar ruta absoluta para Folium (la convertirá a base64 automáticamente)
+                    permanent_image_url = png_path
+                    print(f"   ✅ Imagen guardada como PNG: {png_path}")
+                    print(f"   📄 Folium convertirá a base64 automáticamente")
+        except Exception as e:
+            print(f"   ❌ Error generando imagen: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            permanent_image_url = None
+            actual_resolution = None
+            cloud_warning = f"Error generando imagen: {str(e)}"
+    else:
+        print(f"   ⚠️  No hay imágenes disponibles, saltando generación")
 
     # === Crear mapa base ===
     centroid = cluster_geom.centroid
     m = folium.Map(
         location=[centroid.y, centroid.x],
-        zoom_start=12,
+        zoom_start=14,
         tiles="CartoDB positron",
         attr="CartoDB Positron"
     )
-
-    # === Capa Sentinel-2 ===
-    folium.TileLayer(
-        tiles=tile_url,
-        name=f"Sentinel-2 ({start_date} a {end_date})",
-        attr="Sentinel-2 EE",
-        overlay=True,
-        show=True
+    
+    # Añadir minimapa en esquina superior derecha
+    plugins.MiniMap(
+        toggle_display=True,
+        position='topright',
+        width=150,
+        height=150
     ).add_to(m)
+
+    # === Capa Sentinel-2 como ImageOverlay permanente (si existe) ===
+    if permanent_image_url:
+        bounds = cluster_geom.bounds  # (minx, miny, maxx, maxy)
+        folium.raster_layers.ImageOverlay(
+            image=permanent_image_url,
+            bounds=[[bounds[1], bounds[0]], [bounds[3], bounds[2]]],  # [[south, west], [north, east]]
+            name=f"Sentinel-2 ({start_date} a {end_date})",
+            overlay=True,
+            opacity=0.8,
+            interactive=True,
+            cross_origin=False,
+            zindex=1
+        ).add_to(m)
 
     # === Borde del cluster ===
     gdf_cluster = gpd.GeoDataFrame(geometry=[cluster_geom], crs="EPSG:4326")
@@ -284,6 +480,28 @@ def plot_sentinel_cluster_interactive(
     try:
         m.save(output_path)
         print(f"✅ Mapa interactivo del cluster {cluster_id} guardado en: {output_path}")
+        
+        # Si hay PNG guardado, modificar el HTML para usar ruta relativa en lugar de base64
+        if permanent_image_url and os.path.exists(permanent_image_url):
+            png_filename = os.path.basename(permanent_image_url)
+            
+            # Leer el HTML generado
+            with open(output_path, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            
+            # Buscar y reemplazar data URL por ruta relativa
+            # Folium convierte la imagen a base64, necesitamos revertir eso
+            # Buscar el patrón de ImageOverlay con data:image/png;base64
+            pattern = r'(var img_\w+ = L\.imageOverlay\(\s*)"data:image/png;base64,[^"]*"'
+            replacement = rf'\1"{png_filename}"'
+            html_content_modified = re.sub(pattern, replacement, html_content)
+            
+            # Guardar HTML modificado
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(html_content_modified)
+            
+            print(f"   ✅ HTML modificado para usar PNG externo: {png_filename}")
+        
         return output_path
     except Exception as e:
         print(f"❌ Error generando mapa para cluster {cluster_id}: {e}")
