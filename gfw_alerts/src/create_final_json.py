@@ -106,7 +106,11 @@ def build_report_json(
         titulo_mapa = f"Alertas de deforestación en el {trimestre} trimestre de {anio}"
     
     # Determinar si hay alertas de muy alto nivel
-    hay_alertas_muy_alto = summary["gfw_integrated_alerts__confidence"].get("highest", 0) > 0
+    gfw_conf = summary.get("gfw_integrated_alerts__confidence", {})
+    gladl_conf = summary.get("umd_glad_landsat_alerts__confidence", {})
+    glads_conf = summary.get("umd_glad_sentinel2_alerts__confidence", {})
+    radd_conf = summary.get("wur_radd_alerts__confidence", {})
+    hay_alertas_muy_alto = gfw_conf.get("highest", 0) > 0
     seccion_muy_alto_titulo = "<h3>Alertas de nivel muy alto</h3>" if hay_alertas_muy_alto else ""
     
     report_data = {
@@ -124,25 +128,25 @@ def build_report_json(
         "FOOTER_IMG": make_relative(ruta_footer_img, base_folder),
         "MAPA_ALERTAS": make_relative(ruta_mapa_alertas, base_folder),
         # GFW
-        "GFW_NOMINAL": summary["gfw_integrated_alerts__confidence"].get("nominal", 0),
-        "GFW_ALTO": summary["gfw_integrated_alerts__confidence"].get("high", 0),
-        "GFW_MUY_ALTO": summary["gfw_integrated_alerts__confidence"].get("highest", 0),
-        "GFW_TOTAL": summary["gfw_integrated_alerts__confidence"].get("total", 0),
+        "GFW_NOMINAL": gfw_conf.get("nominal", 0),
+        "GFW_ALTO": gfw_conf.get("high", 0),
+        "GFW_MUY_ALTO": gfw_conf.get("highest", 0),
+        "GFW_TOTAL": gfw_conf.get("total", 0),
         # GLAD Landsat
-        "GLADL_NOMINAL": summary["umd_glad_landsat_alerts__confidence"].get("nominal", 0),
-        "GLADL_ALTO": summary["umd_glad_landsat_alerts__confidence"].get("high", 0),
-        "GLADL_NO_DET": summary["umd_glad_landsat_alerts__confidence"].get("not_detected", 0),
-        "GLADL_TOTAL": summary["umd_glad_landsat_alerts__confidence"].get("total", 0),
+        "GLADL_NOMINAL": gladl_conf.get("nominal", 0),
+        "GLADL_ALTO": gladl_conf.get("high", 0),
+        "GLADL_NO_DET": gladl_conf.get("not_detected", 0),
+        "GLADL_TOTAL": gladl_conf.get("total", 0),
         # GLAD Sentinel
-        "GLADS_NOMINAL": summary["umd_glad_sentinel2_alerts__confidence"].get("nominal", 0),
-        "GLADS_ALTO": summary["umd_glad_sentinel2_alerts__confidence"].get("high", 0),
-        "GLADS_NO_DET": summary["umd_glad_sentinel2_alerts__confidence"].get("not_detected", 0),
-        "GLADS_TOTAL": summary["umd_glad_sentinel2_alerts__confidence"].get("total", 0),
+        "GLADS_NOMINAL": glads_conf.get("nominal", 0),
+        "GLADS_ALTO": glads_conf.get("high", 0),
+        "GLADS_NO_DET": glads_conf.get("not_detected", 0),
+        "GLADS_TOTAL": glads_conf.get("total", 0),
         # WUR RADD
-        "RADD_NOMINAL": summary["wur_radd_alerts__confidence"].get("nominal", 0),
-        "RADD_ALTO": summary["wur_radd_alerts__confidence"].get("high", 0),
-        "RADD_NO_DET": summary["wur_radd_alerts__confidence"].get("not_detected", 0),
-        "RADD_TOTAL": summary["wur_radd_alerts__confidence"].get("total", 0),
+        "RADD_NOMINAL": radd_conf.get("nominal", 0),
+        "RADD_ALTO": radd_conf.get("high", 0),
+        "RADD_NO_DET": radd_conf.get("not_detected", 0),
+        "RADD_TOTAL": radd_conf.get("total", 0),
         "METODOLOGIA": """
         <section class="metodologia">
             <h2>Metodología</h2>

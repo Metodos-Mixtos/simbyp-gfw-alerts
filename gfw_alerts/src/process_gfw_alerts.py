@@ -15,6 +15,12 @@ def process_alerts(alerts_path: str, veredas_path: str, secciones_path: str) -> 
     veredas = gpd.read_file(veredas_path)
     secciones = gpd.read_file(secciones_path, converters={'MPIO_CDPMP': 'str'})
 
+    # Si el archivo de alertas está vacío o no tiene la columna esperada, retornar un GeoDataFrame vacío con las columnas mínimas
+    if gfw_alerts.empty or "gfw_integrated_alerts__confidence" not in gfw_alerts.columns:
+        empty_cols = ["gfw_integrated_alerts__confidence", "geometry"]
+        empty_gdf = gpd.GeoDataFrame(columns=empty_cols, geometry=[], crs="EPSG:4326")
+        return empty_gdf
+
     cols_to_filter = [
         'MPIO_CDPMP', 'SECR_CCNCT', 'STVIVIENDA', 'STP19_EC_1', 'STP19_ES_2',
         'STP19_ACU1', 'STP19_ACU2', 'STP19_ALC1', 'STP19_ALC2', 'STP19_GAS1',
@@ -26,7 +32,7 @@ def process_alerts(alerts_path: str, veredas_path: str, secciones_path: str) -> 
 
     secciones['STVIVIENDA'] = pd.to_numeric(secciones['STVIVIENDA'], errors="coerce")
     base = secciones['STVIVIENDA'].mask(secciones['STVIVIENDA'] == 0)
-    
+
     secciones['ENRG_PERC']  = secciones['STP19_EC_1'] / base * 100
     secciones['ACUED_PERC'] = secciones['STP19_ACU1'] / base * 100
     secciones['ALCLT_PERC'] = secciones['STP19_ALC1'] / base * 100
@@ -38,6 +44,7 @@ def process_alerts(alerts_path: str, veredas_path: str, secciones_path: str) -> 
 
     if gfw_alerts.empty:
         warnings.warn("⚠️ No se encontraron alertas con confianza 'highest'.", UserWarning)
+        return gfw_alerts
 
     df = gpd.sjoin(gfw_alerts, veredas[['CODIGO_VER', 'NOMB_MPIO', 'NOMBRE_VER', 'geometry']], how='left')
     df = df.drop(columns='index_right', errors='ignore')

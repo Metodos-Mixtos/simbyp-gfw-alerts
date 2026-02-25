@@ -161,7 +161,25 @@ def save_to_csv(data: bytes, filename: str):
         f.write(data)
 
 def csv_to_geodataframe(csv_path: str) -> gpd.GeoDataFrame:
-    df = pd.read_csv(csv_path)
+    import os
+    if not os.path.exists(csv_path) or os.path.getsize(csv_path) == 0:
+        # CSV no existe o está vacío: retornar GeoDataFrame vacío con columnas esperadas
+        columns = ["longitude", "latitude"]
+        empty_df = pd.DataFrame(columns=columns)
+        empty_gdf = gpd.GeoDataFrame(empty_df, geometry=[], crs="EPSG:4326")
+        return empty_gdf
+    try:
+        df = pd.read_csv(csv_path)
+    except pd.errors.EmptyDataError:
+        columns = ["longitude", "latitude"]
+        empty_df = pd.DataFrame(columns=columns)
+        empty_gdf = gpd.GeoDataFrame(empty_df, geometry=[], crs="EPSG:4326")
+        return empty_gdf
+    if df.empty:
+        columns = ["longitude", "latitude"]
+        empty_df = pd.DataFrame(columns=columns)
+        empty_gdf = gpd.GeoDataFrame(empty_df, geometry=[], crs="EPSG:4326")
+        return empty_gdf
     gdf = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),

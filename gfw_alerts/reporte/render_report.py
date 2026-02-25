@@ -97,9 +97,23 @@ def _write_text(path, content):
     else:
         Path(p).write_text(content, encoding="utf-8")
 
+
 def render(template_path: Path, data_path: Path, out_path: Path):
     template = _read_text(template_path)
-    data = json.loads(_read_text(data_path))
+    # Manejo robusto del JSON: si no existe, está vacío o no tiene SECCIONES_MUY_ALTO, pasar lista vacía
+    try:
+        data_raw = _read_text(data_path)
+        data = json.loads(data_raw) if data_raw.strip() else {}
+    except Exception:
+        data = {}
+    if not data.get("SECCIONES_MUY_ALTO") or not isinstance(data.get("SECCIONES_MUY_ALTO"), list):
+        data["SECCIONES_MUY_ALTO"] = []
+
+    # Controlar el mensaje de alertas según si hay o no alertas
+    if not data["SECCIONES_MUY_ALTO"]:
+        data["MENSAJE_ALERTAS"] = "Para este periodo de tiempo no se identifican alertas de deforestación."
+    else:
+        data["MENSAJE_ALERTAS"] = ""
 
     # Convertir rutas GCS de imágenes a base64 para incrustar en HTML
     print("🖼️  Procesando imágenes...")

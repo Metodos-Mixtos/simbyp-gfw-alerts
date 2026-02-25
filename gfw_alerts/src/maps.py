@@ -88,6 +88,11 @@ def plot_alerts_interactive(alerts_gdf: gpd.GeoDataFrame, shapefile_path: str, o
         "not_detected": "No detectado"
     }
 
+    # Si no hay alertas, no crear el mapa y salir de la función
+    if alerts_gdf is None or alerts_gdf.empty or alerts_gdf.geometry.is_empty.all():
+        print("No se generó mapa interactivo porque no hay alertas para mostrar.")
+        return
+
     # Convertir a lat/lon
     alerts_gdf = alerts_gdf.to_crs(epsg=4326)
     area_gdf = gpd.read_file(shapefile_path).to_crs(epsg=4326)
