@@ -113,6 +113,9 @@ def build_report_json(
     hay_alertas_muy_alto = gfw_conf.get("highest", 0) > 0
     seccion_muy_alto_titulo = "<h3>Alertas de nivel muy alto</h3>" if hay_alertas_muy_alto else ""
     
+    # Array auxiliar para mostrar mapa solo una vez (workaround para sistema de templates)
+    mostrar_mapa = [True] if hay_alertas_muy_alto else []
+    
     report_data = {
         "TRIMESTRE": trimestre if not es_semanal else None,
         "ANIO": anio if not es_semanal else None,
@@ -123,6 +126,7 @@ def build_report_json(
         "PERIODO_TEXTO": periodo_texto,
         "TITULO_MAPA": titulo_mapa,
         "SECCION_MUY_ALTO_TITULO": seccion_muy_alto_titulo,
+        "MOSTRAR_MAPA": mostrar_mapa,
         "HEADER_IMG1": make_relative(ruta_header_img1, base_folder),
         "HEADER_IMG2": make_relative(ruta_header_img2, base_folder),
         "FOOTER_IMG": make_relative(ruta_footer_img, base_folder),
@@ -151,8 +155,8 @@ def build_report_json(
         <section class="metodologia">
             <h2>Metodología</h2>
             <p>Este reporte presenta las alertas de deforestación provenientes de Global Forest Watch para Bogotá y 19 municipios aledaños. Asimismo, incluye una caracterización de las áreas rurales donde se localizan dichas alertas, apoyada en imágenes satelitales y fuentes externas.</p>
-            <p>Las alertas integradas provienen de tres subsistemas: Sentinel-2, Landsat y Radar. Para más información, consulte la plataforma GFW.</p>
-            <p>Para más información, consulte Global Forest Watch.</p>
+            <p>Las alertas se generan a partir de la comparación de imágenes satelitales de diferentes fechas, identificando áreas donde ha ocurrido una pérdida de cobertura arbórea.
+            <p>Para más detalles sobre la metodología, visite la sección de <a href="https://www.globalforestwatch.org/blog/es/data-and-tools/alertas-de-deforestacion-integradas/">Metodología de GFW</a>.</p>
         </section>
         """,
         "SECCIONES_MUY_ALTO": []

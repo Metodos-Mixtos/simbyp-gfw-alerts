@@ -123,6 +123,9 @@ if __name__ == "__main__":
         print(f"   Rango de fechas: {START_DATE} a {END_DATE}")
 
     # === Carpetas de salida (local para procesamiento) ===
+    # Usar ruta absoluta basada en la ubicación del script, no en el cwd
+    SCRIPT_DIR = Path(__file__).parent.resolve()
+    
     if es_reporte_semanal:
         # Para reportes semanales, usar el rango de fechas
         fecha_rango = f"semana_{START_DATE}_a_{END_DATE}"
@@ -130,7 +133,7 @@ if __name__ == "__main__":
         # Para reportes trimestrales, usar el formato anterior
         fecha_rango = f"{TRIMESTRE}_trim_{ANIO}"
     
-    OUTPUT_FOLDER = os.path.join("temp_data", fecha_rango)
+    OUTPUT_FOLDER = str(SCRIPT_DIR / "temp_data" / fecha_rango)
     os.makedirs(OUTPUT_FOLDER, exist_ok=True)
     SENTINEL_IMAGES_PATH = os.path.join(OUTPUT_FOLDER, "sentinel_imagenes")
     os.makedirs(SENTINEL_IMAGES_PATH, exist_ok=True)
@@ -246,16 +249,62 @@ if __name__ == "__main__":
     print("📝 Renderizando reporte HTML...")
     render(TPL_PATH, DATA_PATH, OUT_PATH)
 
+    # === Limpiar logos que no deben subirse (se toman desde GCS y convierten a base64) ===
+    print("🧹 Limpiando material estático del output (logos se toman desde GCS)...")
+    logos_to_remove = ['asi_4.png', 'bogota_4.png', 'secre_5.png']
+    
+    # Eliminar logos sueltos en la raíz del output
+    for logo in logos_to_remove:
+        logo_path = os.path.join(OUTPUT_FOLDER, logo)
+        if os.path.exists(logo_path):
+            os.remove(logo_path)
+            print(f"   ✅ Eliminado {logo} del output local")
+    
+    # Eliminar carpeta material_estatico si existe (no se usa, logos vienen de GCS)
+    import shutil
+    material_estatico_path = os.path.join(OUTPUT_FOLDER, "material_estatico")
+    if os.path.exists(material_estatico_path):
+        shutil.rmtree(material_estatico_path)
+        print(f"   ✅ Eliminada carpeta material_estatico (no se usa)")
+
     # === Subir carpeta completa a GCS ===
     def upload_folder_to_gcs(local_folder, gcs_bucket, gcs_prefix):
+        """
+        Sube todos los archivos del folder local a GCS, EXCEPTO los logos estáticos
+        que deben tomarse desde GCS y convertirse a base64.
+        """
+        # Archivos a excluir (logos que se toman desde GCS)
+        EXCLUDED_FILES = {'asi_4.png', 'bogota_4.png', 'secre_5.png'}
+        EXCLUDED_FOLDERS = {'material_estatico'}  # Carpeta que no debe subirse
+        
         client = storage.Client()
         bucket = client.bucket(gcs_bucket)
         for root, dirs, files in os.walk(local_folder):
+            # Filtrar carpetas excluidas de la búsqueda
+            dirs[:] = [d for d in dirs if d not in EXCLUDED_FOLDERS]
+            
             for file in files:
+                # Saltar logos que deben tomarse desde GCS
+                if file in EXCLUDED_FILES:
+                    print(f"⏭️  Omitido {file} (se toma desde GCS y convierte a base64)")
+                    continue
+                
                 local_path = os.path.join(root, file)
                 relative_path = os.path.relpath(local_path, local_folder)
                 gcs_path = os.path.join(gcs_prefix, relative_path).replace("\\", "/")
                 blob = bucket.blob(gcs_path)
+                
+                # Eliminar archivo viejo si existe para forzar actualización
+                if blob.exists():
+                    blob.delete()
+                    print(f"🗑️  Eliminado archivo viejo: gs://{gcs_bucket}/{gcs_path}")
+                    # Recrear blob después de eliminar
+                    blob = bucket.blob(gcs_path)
+                
+                # Configurar cache_control para archivos HTML
+                if file.endswith('.html'):
+                    blob.cache_control = 'no-cache, no-store, must-revalidate'
+                
                 blob.upload_from_filename(local_path)
                 print(f"✅ Subido {local_path} a gs://{gcs_bucket}/{gcs_path}")
 

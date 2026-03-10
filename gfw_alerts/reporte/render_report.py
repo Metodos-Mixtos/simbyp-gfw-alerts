@@ -111,9 +111,8 @@ def render(template_path: Path, data_path: Path, out_path: Path):
 
     # Controlar el mensaje de alertas según si hay o no alertas
     if not data["SECCIONES_MUY_ALTO"]:
-        data["MENSAJE_ALERTAS"] = "Para este periodo de tiempo no se identifican alertas de deforestación."
-    else:
-        data["MENSAJE_ALERTAS"] = ""
+        data["MENSAJE_ALERTAS"] = "Para este periodo de tiempo no se identifican alertas altas de deforestación."
+    # Si hay alertas, no agregamos la clave MENSAJE_ALERTAS para que no se renderice el div
 
     # Convertir rutas GCS de imágenes a base64 para incrustar en HTML
     print("🖼️  Procesando imágenes...")
