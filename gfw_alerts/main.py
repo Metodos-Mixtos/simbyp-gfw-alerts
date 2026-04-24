@@ -151,7 +151,15 @@ if __name__ == "__main__":
 
     print("📄 Convirtiendo CSV a GeoDataFrame...")
     gdf_alertas = csv_to_geodataframe(CSV_OUTPUT_PATH)
+    
+    # Save to GeoJSON (handles empty dataframes)
     save_geodataframe_to_geojson(gdf_alertas, GEOJSON_OUTPUT_PATH)
+    
+    # Warn if no data
+    if gdf_alertas.empty:
+        print("⚠️  No alerts data found for this period")
+        print(f"   CSV file: {CSV_OUTPUT_PATH}")
+        print(f"   This may mean no alerts were triggered in the study area during this period")
 
     print("📊 Resumiendo niveles de alerta...")
     summary = summarize_alert_confidences(gdf_alertas)
@@ -199,7 +207,19 @@ if __name__ == "__main__":
                 print(f"❌ Mapa NO generado para cluster {cluster_id}: {output_path} (map_path: {map_path})")
     
     # Save analysis file (may be empty)
-    alerts_with_clusters.to_file(DF_ANALYSIS_PATH)
+    if alerts_with_clusters.empty:
+        print(f"⚠️  No analysis data to save (empty alerts)")
+        # Create a minimal valid GeoJSON FeatureCollection
+        empty_geojson = {
+            "type": "FeatureCollection",
+            "features": []
+        }
+        import json
+        with open(DF_ANALYSIS_PATH, 'w') as f:
+            json.dump(empty_geojson, f, indent=2)
+    else:
+        print(f"💾 Saving analysis file ({len(alerts_with_clusters)} features)")
+        alerts_with_clusters.to_file(DF_ANALYSIS_PATH)
 
     # === Crear mapa general de alertas ===
     print("🗺️ Creando visualización general...")

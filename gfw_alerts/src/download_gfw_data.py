@@ -164,6 +164,7 @@ def csv_to_geodataframe(csv_path: str) -> gpd.GeoDataFrame:
     import os
     if not os.path.exists(csv_path) or os.path.getsize(csv_path) == 0:
         # CSV no existe o está vacío: retornar GeoDataFrame vacío con columnas esperadas
+        print(f"⚠️  CSV file is empty or missing: {csv_path}")
         columns = ["longitude", "latitude"]
         empty_df = pd.DataFrame(columns=columns)
         empty_gdf = gpd.GeoDataFrame(empty_df, geometry=[], crs="EPSG:4326")
@@ -171,15 +172,22 @@ def csv_to_geodataframe(csv_path: str) -> gpd.GeoDataFrame:
     try:
         df = pd.read_csv(csv_path)
     except pd.errors.EmptyDataError:
+        print(f"⚠️  CSV file is empty (no data rows): {csv_path}")
         columns = ["longitude", "latitude"]
         empty_df = pd.DataFrame(columns=columns)
         empty_gdf = gpd.GeoDataFrame(empty_df, geometry=[], crs="EPSG:4326")
         return empty_gdf
+    
     if df.empty:
+        print(f"⚠️  CSV has headers but no data rows: {csv_path}")
+        print(f"   Columns: {list(df.columns)}")
         columns = ["longitude", "latitude"]
         empty_df = pd.DataFrame(columns=columns)
         empty_gdf = gpd.GeoDataFrame(empty_df, geometry=[], crs="EPSG:4326")
         return empty_gdf
+    
+    print(f"✅ CSV loaded: {len(df)} rows, columns: {list(df.columns)[:3]}...")
+    
     gdf = gpd.GeoDataFrame(
         df,
         geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
@@ -198,7 +206,22 @@ def summarize_alert_confidences(df: pd.DataFrame) -> Dict[str, Dict[str, int]]:
     return summary
 
 def save_geodataframe_to_geojson(gdf: gpd.GeoDataFrame, output_path: str):
-    gdf.to_file(output_path, driver='GeoJSON')
+    """
+    Save a GeoDataFrame to GeoJSON, handling empty dataframes gracefully.
+    """
+    if gdf.empty:
+        print(f"⚠️  GeoDataFrame is empty, creating minimal valid GeoJSON: {output_path}")
+        # Create a minimal valid GeoJSON FeatureCollection
+        empty_geojson = {
+            "type": "FeatureCollection",
+            "features": []
+        }
+        import json
+        with open(output_path, 'w') as f:
+            json.dump(empty_geojson, f, indent=2)
+    else:
+        print(f"💾 Saving GeoDataFrame ({len(gdf)} features) to: {output_path}")
+        gdf.to_file(output_path, driver='GeoJSON')
     
 def save_bbox_to_geojson(shapefile_path: str, output_path: str):
     area_gdf = gpd.read_file(shapefile_path)
