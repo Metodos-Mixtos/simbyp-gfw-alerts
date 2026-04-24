@@ -4,7 +4,9 @@ urllib3==2.1.0
 google-auth==2.26.2
 google-cloud-storage==2.10.0
 google-cloud-secret-manager==2.16.4
-geopandas==0.14.0
+fiona==1.9.6
+pyogrio==0.7.2
+geopandas==0.13.2
 pandas==2.2.0
 shapely==2.0.2
 matplotlib==3.8.2
