@@ -139,6 +139,9 @@ done
 # Construir imagen Docker
 gcloud builds submit --tag gcr.io/bosques-bogota-416214/gfw-weekly-alerts
 
+# (Opcional: solo para actualizaciones) Actualizar la imagen del container
+gcloud run jobs update gfw-weekly-alerts --image gcr.io/bosques-bogota-416214/gfw-weekly-alerts
+
 # Crear Cloud Run Job
 gcloud run jobs create gfw-weekly-alerts \
   --image gcr.io/bosques-bogota-416214/gfw-weekly-alerts \
