@@ -3,7 +3,8 @@ requests
 urllib3<2
 google-auth<2.0
 google-cloud-storage<2.0
-geopandas 
+google-cloud-secret-manager
+geopandas
 pandas
 shapely
 matplotlib

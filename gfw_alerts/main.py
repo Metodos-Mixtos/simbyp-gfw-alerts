@@ -1,8 +1,6 @@
 import argparse
-from dotenv import load_dotenv
 import os
 from pathlib import Path
-import dotenv
 import warnings
 import pandas as pd
 import geopandas as gpd
@@ -10,8 +8,6 @@ from google.cloud import storage
 
 # Suppress urllib3 SSL warning
 warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+")
-
-dotenv.load_dotenv()
 
 # Only set GOOGLE_APPLICATION_CREDENTIALS if it exists (local dev only)
 # In Cloud Run, authentication happens automatically via the service account
@@ -39,23 +35,25 @@ from src.process_gfw_alerts import (
 from src.create_final_json import build_report_json
 from src.maps import plot_alerts_interactive, plot_sentinel_cluster_interactive
 from reporte.render_report import render
+from src.secrets import load_secrets
 
-# Cargar variables de entorno 
-# Buscar el .env en la raíz del proyecto (un nivel arriba de bosques-bog)
-env_path = Path(__file__).parent.parent / ".env"
-print(f"Debug: env_path = {env_path}")
-print(f"Debug: env_path exists = {env_path.exists()}")
-load_dotenv(env_path)
+# === Load secrets using three-tier fallback strategy ===
+# 1. Environment variables (Cloud Run)
+# 2. .env file (local development)
+# 3. Google Cloud Secret Manager (local dev with enhanced security)
+secrets = load_secrets()
 
-USERNAME = os.getenv("GFW_USERNAME")
-PASSWORD = os.getenv("GFW_PASSWORD")
-ALIAS = os.getenv("ALIAS")
-EMAIL = os.getenv("EMAIL")
-ORG = os.getenv("ORG")
-OUTPUTS_BASE_PATH = os.getenv("OUTPUTS_BASE_PATH")
-GOOGLE_CLOUD_PROJECT = os.getenv("GCP_PROJECT")
-INPUTS_PATH = os.getenv("INPUTS_PATH")
+# Extract secrets into module-level variables
+USERNAME = secrets["GFW_USERNAME"]
+PASSWORD = secrets["GFW_PASSWORD"]
+ALIAS = secrets["ALIAS"]
+EMAIL = secrets["EMAIL"]
+ORG = secrets["ORG"]
+OUTPUTS_BASE_PATH = secrets["OUTPUTS_BASE_PATH"]
+GOOGLE_CLOUD_PROJECT = secrets["GCP_PROJECT"]
+INPUTS_PATH = secrets["INPUTS_PATH"]
 
+print(f"\n✅ All secrets loaded successfully")
 print(f"Debug: USERNAME = {USERNAME}")
 print(f"Debug: PASSWORD = {'*' * len(PASSWORD) if PASSWORD else None}")
 print(f"Debug: ALIAS = {ALIAS}")
@@ -64,26 +62,6 @@ print(f"Debug: ORG = {ORG}")
 print(f"Debug: OUTPUTS_BASE_PATH = {OUTPUTS_BASE_PATH}")
 print(f"Debug: GOOGLE_CLOUD_PROJECT = {GOOGLE_CLOUD_PROJECT}")
 print(f"Debug: INPUTS_PATH = {INPUTS_PATH}")
-
-# === Validar que las variables de entorno se cargaron correctamente ===
-required_env_vars = {
-    "USERNAME": USERNAME,
-    "PASSWORD": PASSWORD,
-    "ALIAS": ALIAS,
-    "EMAIL": EMAIL,
-    "ORG": ORG,
-    "OUTPUTS_BASE_PATH": OUTPUTS_BASE_PATH,
-    "GCP_PROJECT": GOOGLE_CLOUD_PROJECT,
-    "INPUTS_PATH": INPUTS_PATH,
-}
-
-missing_vars = [key for key, value in required_env_vars.items() if value is None]
-
-if missing_vars:
-    print(f"Error: Faltan las siguientes variables de entorno en {env_path}:")
-    for var in missing_vars:
-        print(f" - {var}")
-    exit(1)
 
 # === Rutas de insumos (GCS paths - always use forward slashes) ===
 POLYGON_PATH = f"{INPUTS_PATH}/area_estudio/gfw/area_estudio.geojson"
