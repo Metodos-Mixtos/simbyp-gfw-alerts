@@ -5,6 +5,7 @@ import warnings
 import pandas as pd
 import geopandas as gpd
 from google.cloud import storage
+from datetime import datetime
 
 # Suppress urllib3 SSL warning
 warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+")
@@ -36,6 +37,8 @@ from src.create_final_json import build_report_json
 from src.maps import plot_alerts_interactive, plot_sentinel_cluster_interactive
 from reporte.render_report import render
 from src.secrets import load_secrets
+from src.database import is_database_enabled
+from src.logging_utils import log_alert_statistics, log_report_sent
 
 # === Load secrets using three-tier fallback strategy ===
 # 1. Environment variables (Cloud Run)
@@ -62,6 +65,10 @@ print(f"Debug: ORG = {ORG}")
 print(f"Debug: OUTPUTS_BASE_PATH = {OUTPUTS_BASE_PATH}")
 print(f"Debug: GOOGLE_CLOUD_PROJECT = {GOOGLE_CLOUD_PROJECT}")
 print(f"Debug: INPUTS_PATH = {INPUTS_PATH}")
+
+# === Initialize database (create tables if needed) ===
+from src.database import init_db
+init_db()
 
 # === Rutas de insumos (GCS paths - always use forward slashes) ===
 POLYGON_PATH = f"{INPUTS_PATH}/area_estudio/gfw/area_estudio.geojson"
@@ -243,6 +250,31 @@ if __name__ == "__main__":
         es_semanal=es_reporte_semanal
     )
 
+    # === Log alert statistics to database ===
+    if is_database_enabled():
+        print("💾 Logging alert statistics to database...")
+        # Determine alert type based on report type
+        alert_type = 'weekly_alerts' if es_reporte_semanal else 'trimestral_alerts'
+        alert_count = len(gdf_alertas)
+        alert_date = datetime.now().date()
+        
+        # Log statistics
+        metadata = {
+            "summary": summary if isinstance(summary, dict) else {},
+            "clusters_count": len(alerts_with_clusters),
+            "start_date": START_DATE,
+            "end_date": END_DATE,
+            "report_type": "weekly" if es_reporte_semanal else "trimestral",
+        }
+        
+        log_alert_statistics(
+            alert_date=alert_date,
+            alert_type=alert_type,
+            alert_source='gfw',
+            alert_count=alert_count,
+            metadata=metadata,
+        )
+
     # === Renderizar reporte HTML ===
     print("📝 Renderizando reporte HTML...")
     render(TPL_PATH, DATA_PATH, OUT_PATH)
@@ -311,3 +343,31 @@ if __name__ == "__main__":
 
     print("✅ Proceso completo. Archivos guardados en:")
     print(f"   - GCS: gs://reportes-simbyp/reportes_gfw/{fecha_rango}/")
+
+    # === Log report to database ===
+    if is_database_enabled():
+        print("💾 Logging report to database...")
+        report_url = f"gs://reportes-simbyp/reportes_gfw/{fecha_rango}/reporte_final.html"
+        report_date = datetime.strptime(END_DATE if es_reporte_semanal else END_DATE, "%Y-%m-%d").date() if isinstance(END_DATE, str) else END_DATE
+        
+        report_title = (
+            f"Alertas GFW - Semana {START_DATE} a {END_DATE}"
+            if es_reporte_semanal
+            else f"Alertas GFW - {TRIMESTRE} trimestre {ANIO}"
+        )
+        
+        report_metadata = {
+            "output_folder": fecha_rango,
+            "alerts_count": len(gdf_alertas),
+            "clusters_count": len(alerts_with_clusters),
+            "has_highest_confidence": not alerts_with_clusters.empty,
+        }
+        
+        log_report_sent(
+            alert_type='weekly_alerts' if es_reporte_semanal else 'trimestral_alerts',
+            report_title=report_title,
+            report_date=report_date,
+            report_url=report_url,
+            status='generated',
+            metadata=report_metadata,
+        )
