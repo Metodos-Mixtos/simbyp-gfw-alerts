@@ -368,6 +368,6 @@ if __name__ == "__main__":
             report_title=report_title,
             report_date=report_date,
             report_url=report_url,
-            status='generated',
+            status='sent',
             metadata=report_metadata,
         )

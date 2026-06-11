@@ -94,6 +94,37 @@ Esta aplicación está configurada para ejecutarse automáticamente en Google Cl
 
 ### Deployment
 
+#### Opción rápida (recomendada)
+
+Usa el script de despliegue en un solo comando:
+
+```bash
+./scripts/deploy.sh
+```
+
+Este script:
+
+- Construye la imagen con Cloud Build
+- Crea o actualiza el Cloud Run Job
+- Configura secretos (`GFW_USERNAME`, `GFW_PASSWORD`, `ALIAS`, `EMAIL`, `ORG`, `DATABASE_URL`)
+- Configura variables de entorno (`OUTPUTS_BASE_PATH`, `INPUTS_PATH`, `GCP_PROJECT`)
+- Crea o actualiza el Cloud Scheduler
+
+Overrides comunes:
+
+```bash
+# Cambiar nombre del job o cron
+JOB_NAME=gfw-weekly-alerts-staging \
+SCHEDULER_JOB_NAME=gfw-weekly-alerts-trigger-staging \
+SCHEDULE="0 7 * * 1" \
+./scripts/deploy.sh
+
+# Cambiar proyecto/región
+PROJECT_ID=mi-proyecto \
+REGION=us-east1 \
+./scripts/deploy.sh
+```
+
 #### Prerequisitos
 
 - Acceso al proyecto GCP: `bosques-bogota-416214`

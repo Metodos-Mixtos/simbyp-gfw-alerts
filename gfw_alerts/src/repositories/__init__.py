@@ -6,6 +6,7 @@ from datetime import date, datetime
 from typing import Optional, Dict, Any
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.models import AlertStatistics, ReportSent
@@ -39,15 +40,35 @@ class AlertStatisticsRepository:
             metadata: Optional JSON metadata
         
         Returns:
-            Created AlertStatistics record
+            Created or updated AlertStatistics record
         """
+
+        # Respect DB unique constraint on (date, alert_type, alert_source, COALESCE(municipality_code, ''))
+        query = session.query(AlertStatistics).filter(
+            AlertStatistics.date == date_,
+            AlertStatistics.alert_type == alert_type,
+            func.coalesce(AlertStatistics.municipality_code, "") == (municipality_code or ""),
+        )
+
+        if alert_source is None:
+            query = query.filter(AlertStatistics.alert_source.is_(None))
+        else:
+            query = query.filter(AlertStatistics.alert_source == alert_source)
+
+        existing = query.first()
+        if existing:
+            existing.alert_count = alert_count
+            existing.metadata_json = metadata or {}
+            session.flush()
+            return existing
+
         record = AlertStatistics(
             date=date_,
             alert_type=alert_type,
             alert_source=alert_source,
             alert_count=alert_count,
             municipality_code=municipality_code,
-            metadata=metadata or {},
+            metadata_json=metadata or {},
         )
         session.add(record)
         session.flush()
@@ -66,7 +87,7 @@ class ReportSentRepository:
         report_title: str,
         report_date: Optional[date] = None,
         report_url: Optional[str] = None,
-        status: str = 'generated',
+        status: str = 'sent',
         recipient_count: int = 0,
         metadata: Optional[Dict[str, Any]] = None,
         error_message: Optional[str] = None,
@@ -80,7 +101,7 @@ class ReportSentRepository:
             report_title: Title of the report
             report_date: Date the report covers
             report_url: GCS URL or path to report
-            status: Delivery status (generated, sent, failed, partial)
+            status: Delivery status (sent, failed, partial)
             recipient_count: Number of recipients
             metadata: Optional JSON metadata
             error_message: Optional error message
@@ -95,7 +116,7 @@ class ReportSentRepository:
             report_url=report_url,
             status=status,
             recipient_count=recipient_count,
-            metadata=metadata or {},
+            metadata_json=metadata or {},
             error_message=error_message,
         )
         session.add(record)

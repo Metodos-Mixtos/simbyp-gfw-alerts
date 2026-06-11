@@ -28,7 +28,7 @@ class AlertStatistics(Base):
     alert_source = Column(String(50), index=True)  # gfw, psa, urban_sprawl
     alert_count = Column(Integer, default=0)
     municipality_code = Column(String(10), index=True)  # Colombian DIVIPOLA code
-    metadata = Column(JSON)  # Additional metrics in JSON format
+    metadata_json = Column("metadata", JSON)  # Additional metrics in JSON format
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     def __repr__(self):
@@ -50,13 +50,13 @@ class ReportSent(Base):
     report_date = Column(Date, index=True)  # Date the report covers
     sent_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     recipient_count = Column(Integer, default=0)
-    status = Column(String(20), default='generated')  # generated, sent, failed, partial
+    status = Column(String(20), default='sent')  # sent, failed, partial
     error_message = Column(String(1000))
-    metadata = Column(JSON)  # Alert counts, sources, etc.
+    metadata_json = Column("metadata", JSON)  # Alert counts, sources, etc.
     
     __table_args__ = (
         CheckConstraint(
-            "status IN ('generated', 'sent', 'failed', 'partial')",
+            "status IN ('sent', 'failed', 'partial')",
             name="reports_sent_status_check"
         ),
     )
