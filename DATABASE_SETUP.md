@@ -22,7 +22,7 @@ cloud_sql_proxy -instances=bosques-bogota-416214:us-central1:simbyp-users-db -un
 Your `.env` file should contain:
 
 ```
-DATABASE_URL=postgresql://simbyp_app:jimmyz-redka6-xuHduv@/simbyp_db?host=/tmp/cloudsql/bosques-bogota-416214:us-central1:simbyp-users-db
+DATABASE_URL=postgresql://simbyp_app:DB_PASSWORD@/simbyp_db?host=/tmp/cloudsql/bosques-bogota-416214:us-central1:simbyp-users-db
 ```
 
 ### 3. Run the Pipeline
