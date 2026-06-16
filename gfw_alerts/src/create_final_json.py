@@ -114,7 +114,9 @@ def build_report_json(
     seccion_muy_alto_titulo = "<h3>Alertas de nivel muy alto</h3>" if hay_alertas_muy_alto else ""
     
     # Array auxiliar para mostrar mapa solo una vez (workaround para sistema de templates)
-    mostrar_mapa = [True] if hay_alertas_muy_alto else []
+    # Mostrar mapa si hay cualquier tipo de alerta (no solo las de nivel muy alto)
+    hay_alertas = gfw_conf.get("total", 0) > 0
+    mostrar_mapa = [True] if hay_alertas else []
     
     report_data = {
         "TRIMESTRE": trimestre if not es_semanal else None,

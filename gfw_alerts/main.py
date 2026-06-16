@@ -339,15 +339,15 @@ if __name__ == "__main__":
                 print(f"✅ Subido {local_path} a gs://{gcs_bucket}/{gcs_path}")
 
     print("☁️ Subiendo outputs a GCS...")
-    upload_folder_to_gcs(OUTPUT_FOLDER, "reportes-simbyp", f"reportes_gfw/{fecha_rango}")
+    upload_folder_to_gcs(OUTPUT_FOLDER, "desarrollo-reportes-simbyp", f"reportes_gfw/{fecha_rango}")
 
     print("✅ Proceso completo. Archivos guardados en:")
-    print(f"   - GCS: gs://reportes-simbyp/reportes_gfw/{fecha_rango}/")
+    print(f"   - GCS: gs://desarrollo-reportes-simbyp/reportes_gfw/{fecha_rango}/")
 
     # === Log report to database ===
     if is_database_enabled():
         print("💾 Logging report to database...")
-        report_url = f"gs://reportes-simbyp/reportes_gfw/{fecha_rango}/reporte_final.html"
+        report_url = f"gs://desarrollo-reportes-simbyp/reportes_gfw/{fecha_rango}/reporte_final.html"
         report_date = datetime.strptime(END_DATE if es_reporte_semanal else END_DATE, "%Y-%m-%d").date() if isinstance(END_DATE, str) else END_DATE
         
         report_title = (
