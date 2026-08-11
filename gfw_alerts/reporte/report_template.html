@@ -63,6 +63,13 @@
     <h1>{{TITULO_REPORTE}}</h1>
     <div class="subtitle">{{PERIODO_TEXTO}}</div>
 
+    {{#MOSTRAR_SOLO_MENSAJE_SIN_ALERTAS}}
+    <div class="card--resaltada" style="text-align:center; color:#000000; font-size:16px; margin:2rem 0;">
+      {{MENSAJE_ALERTAS}}
+    </div>
+    {{/MOSTRAR_SOLO_MENSAJE_SIN_ALERTAS}}
+
+    {{#MOSTRAR_CONTENIDO_ALERTAS}}
     <section id="deforestation">
       <h2>Alertas de deforestación</h2>
       <div class="card resumen-card">
@@ -100,7 +107,7 @@
       </div>
       {{#MENSAJE_ALERTAS}}
       <div class="card--resaltada" style="text-align:center; color:#000000; font-size:16px; margin:2rem 0;">
-        {{MENSAJE_ALERTAS}}
+        {{MENSAJE_ALERTAS_TEXTO}}
       </div>
       {{/MENSAJE_ALERTAS}}
 
@@ -147,6 +154,7 @@
       {{/SECCIONES_MUY_ALTO}}
       </div>
     </section>
+    {{/MOSTRAR_CONTENIDO_ALERTAS}}
 
     <!-- Metodología -->
     <div class="metodologia">

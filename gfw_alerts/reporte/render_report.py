@@ -109,10 +109,36 @@ def render(template_path: Path, data_path: Path, out_path: Path):
     if not data.get("SECCIONES_MUY_ALTO") or not isinstance(data.get("SECCIONES_MUY_ALTO"), list):
         data["SECCIONES_MUY_ALTO"] = []
 
-    # Controlar el mensaje de alertas según si hay o no alertas
-    if not data["SECCIONES_MUY_ALTO"]:
-        data["MENSAJE_ALERTAS"] = "Para este periodo de tiempo no se identifican alertas altas de deforestación."
-    # Si hay alertas, no agregamos la clave MENSAJE_ALERTAS para que no se renderice el div
+    def _to_int(value, default=0):
+        try:
+            if value is None:
+                return default
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    # Detectar el caso donde toda la tabla de resumen está en cero.
+    total_keys = ["GFW_TOTAL", "GLADL_TOTAL", "GLADS_TOTAL", "RADD_TOTAL"]
+    all_totals_zero = all(_to_int(data.get(key, 0)) == 0 for key in total_keys)
+
+    if all_totals_zero:
+        data["MOSTRAR_SOLO_MENSAJE_SIN_ALERTAS"] = [{
+            "MENSAJE_ALERTAS": "Para este periodo de tiempo no se identifican alertas de deforestación en el área de estudio."
+        }]
+        data["MOSTRAR_CONTENIDO_ALERTAS"] = []
+        data["MOSTRAR_MAPA"] = []
+        data["SECCIONES_MUY_ALTO"] = []
+    else:
+        data["MOSTRAR_SOLO_MENSAJE_SIN_ALERTAS"] = []
+        data["MOSTRAR_CONTENIDO_ALERTAS"] = [{}]
+
+        # Si existen alertas pero no hay secciones de muy alto, mostrar mensaje contextual.
+        if not data["SECCIONES_MUY_ALTO"]:
+            data["MENSAJE_ALERTAS"] = [{
+                "MENSAJE_ALERTAS_TEXTO": "Para este periodo de tiempo no se identifican alertas altas de deforestación."
+            }]
+        else:
+            data["MENSAJE_ALERTAS"] = []
 
     # Convertir rutas GCS de imágenes a base64 para incrustar en HTML
     print("🖼️  Procesando imágenes...")
