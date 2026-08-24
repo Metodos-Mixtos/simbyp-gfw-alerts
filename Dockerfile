@@ -21,8 +21,8 @@ ENV LC_ALL=es_ES.UTF-8
 WORKDIR /app
 
 # Copy requirements and install Python dependencies
-COPY Requirements.txt .
-RUN pip install --no-cache-dir -r Requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code (NOT .env or keys!)
 COPY gfw_alerts/ ./gfw_alerts/
