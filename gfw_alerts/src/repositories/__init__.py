@@ -87,7 +87,7 @@ class ReportSentRepository:
         report_title: str,
         report_date: Optional[date] = None,
         report_url: Optional[str] = None,
-        status: str = 'sent',
+        status: str = 'generated',
         recipient_count: int = 0,
         metadata: Optional[Dict[str, Any]] = None,
         error_message: Optional[str] = None,

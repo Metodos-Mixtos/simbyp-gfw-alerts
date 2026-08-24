@@ -302,11 +302,15 @@ if __name__ == "__main__":
         """
         Sube todos los archivos del folder local a GCS, EXCEPTO los logos estáticos
         que deben tomarse desde GCS y convertirse a base64.
+
+        Returns:
+            List[dict]: Uploaded files with normalized metadata for email notifications.
         """
         # Archivos a excluir (logos que se toman desde GCS)
         EXCLUDED_FILES = {'asi_4.png', 'bogota_4.png', 'secre_5.png'}
         EXCLUDED_FOLDERS = {'material_estatico'}  # Carpeta que no debe subirse
         
+        uploaded_files = []
         client = storage.Client()
         bucket = client.bucket(gcs_bucket)
         for root, dirs, files in os.walk(local_folder):
@@ -338,8 +342,17 @@ if __name__ == "__main__":
                 blob.upload_from_filename(local_path)
                 print(f"✅ Subido {local_path} a gs://{gcs_bucket}/{gcs_path}")
 
+                # Metadata contract consumed by simbyp-email-notifications
+                uploaded_files.append({
+                    "name": file,
+                    "url": f"gs://{gcs_bucket}/{gcs_path}",
+                    "path": relative_path.replace('\\\\', '/'),
+                })
+
+        return uploaded_files
+
     print("☁️ Subiendo outputs a GCS...")
-    upload_folder_to_gcs(OUTPUT_FOLDER, "reportes-simbyp", f"reportes_gfw/{fecha_rango}")
+    uploaded_files = upload_folder_to_gcs(OUTPUT_FOLDER, "reportes-simbyp", f"reportes_gfw/{fecha_rango}")
 
     print("✅ Proceso completo. Archivos guardados en:")
     print(f"   - GCS: gs://reportes-simbyp/reportes_gfw/{fecha_rango}/")
@@ -361,6 +374,10 @@ if __name__ == "__main__":
             "alerts_count": len(gdf_alertas),
             "clusters_count": len(alerts_with_clusters),
             "has_highest_confidence": not alerts_with_clusters.empty,
+            "start_date": START_DATE,
+            "end_date": END_DATE,
+            "map_url": f"gs://reportes-simbyp/reportes_gfw/{fecha_rango}/alertas_mapa_{fecha_rango}.html",
+            "files": uploaded_files,
         }
         
         log_report_sent(
@@ -368,6 +385,6 @@ if __name__ == "__main__":
             report_title=report_title,
             report_date=report_date,
             report_url=report_url,
-            status='sent',
+            status='generated',
             metadata=report_metadata,
         )
