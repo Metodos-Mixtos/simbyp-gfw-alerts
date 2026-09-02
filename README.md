@@ -2,6 +2,12 @@
 
 Este repositorio contiene herramientas para el análisis y monitoreo de alertas de deforestación en Bogotá, integrando la API de Global Forest Watch (GFW) para descargar y procesar alertas integradas de deforestación.
 
+## Diagrama de Arquitectura
+
+![Arquitectura de simbyp-gfw-alerts](docs/architecture-preview.png)
+
+Diagrama interactivo (zoom, temas, exportación): [`docs/architecture.html`](docs/architecture.html) — generado con [Archify](https://github.com/tt-a1i/archify).
+
 ## Estructura del Repositorio
 
 - `main.py`: Script principal para ejecutar el pipeline completo de alertas GFW.
